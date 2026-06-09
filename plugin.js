@@ -1188,7 +1188,8 @@
 
           var styleEl = document.createElement("style");
           styleEl.textContent = getStyles();
-          container.appendChild(styleEl);
+          styleEl.setAttribute("data-hofter-style", "1");
+          document.head.appendChild(styleEl);
           state.styleEl = styleEl;
 
           var loadData = function() {
@@ -1229,7 +1230,7 @@
             ev.el.removeEventListener(ev.type, ev.fn);
           }
           state.eventListeners = [];
-          if (container) container.replaceChildren();
+          if (container) container.innerHTML = "";
           delete window.__hofter;
         }
       }
