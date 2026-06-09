@@ -1171,59 +1171,68 @@
   };
 
   /* ─── 插件注册 ─── */
-  window.RochePlugin = window.RochePlugin || {};
-  window.RochePlugin.register = function() {
-    return {
-      mount: function(container, roche) {
-        state.roche = roche;
-        state.containerEl = container;
-        state.fontSize = 17;
+  window.RochePlugin.register({
+    id: "hofter",
+    name: "hofter",
+    version: "1.0.0",
+    apps: [
+      {
+        id: "hofter-home",
+        name: "hofter",
+        icon: "extension",
+        iconImage: "",
+        mount: function(container, roche) {
+          state.roche = roche;
+          state.containerEl = container;
+          state.fontSize = 17;
 
-        var styleEl = document.createElement("style");
-        styleEl.textContent = getStyles();
-        container.appendChild(styleEl);
-        state.styleEl = styleEl;
+          var styleEl = document.createElement("style");
+          styleEl.textContent = getStyles();
+          container.appendChild(styleEl);
+          state.styleEl = styleEl;
 
-        var loadData = function() {
-          var promises = [];
-          if (roche.storage) {
-            promises.push(roche.storage.get("settings").then(function(v) { if (v) { for (var k in v) { if (v.hasOwnProperty(k)) state.settings[k] = v[k]; } } }).catch(function(){}));
-            promises.push(roche.storage.get("cpTags").then(function(v) { if (v) state.cpTags = v; }).catch(function(){}));
-            promises.push(roche.storage.get("tropeTags").then(function(v) { if (v) state.tropeTags = v; }).catch(function(){}));
-            promises.push(roche.storage.get("fandomTags").then(function(v) { if (v) state.fandomTags = v; }).catch(function(){}));
-            promises.push(roche.storage.get("summaries_cache").then(function(v) { if (v) state.summaries = v; }).catch(function(){}));
-            promises.push(roche.storage.get("published_works").then(function(v) { if (v) state.publishedWorks = v; }).catch(function(){}));
-            promises.push(roche.storage.get("favorites").then(function(v) { if (v) { state.favorites = v.favorites || []; state.readHistory = v.readHistory || []; state.readLater = v.readLater || []; } }).catch(function(){}));
-          }
-          if (roche.persona) {
-            promises.push(roche.persona.list().then(function(list) { state.personas = list || []; }).catch(function(){}));
-          }
-          if (roche.character) {
-            promises.push(roche.character.list().then(function(list) { state.characters = list || []; }).catch(function(){}));
-          }
-          Promise.all(promises).then(function() {
-            if (state.settings.activePersonaId) {
-              for (var i = 0; i < state.personas.length; i++) {
-                if (state.personas[i].id === state.settings.activePersonaId) { state.activePersona = state.personas[i]; break; }
-              }
+          var loadData = function() {
+            var promises = [];
+            if (roche.storage) {
+              promises.push(roche.storage.get("settings").then(function(v) { if (v) { for (var k in v) { if (v.hasOwnProperty(k)) state.settings[k] = v[k]; } } }).catch(function(){}));
+              promises.push(roche.storage.get("cpTags").then(function(v) { if (v) state.cpTags = v; }).catch(function(){}));
+              promises.push(roche.storage.get("tropeTags").then(function(v) { if (v) state.tropeTags = v; }).catch(function(){}));
+              promises.push(roche.storage.get("fandomTags").then(function(v) { if (v) state.fandomTags = v; }).catch(function(){}));
+              promises.push(roche.storage.get("summaries_cache").then(function(v) { if (v) state.summaries = v; }).catch(function(){}));
+              promises.push(roche.storage.get("published_works").then(function(v) { if (v) state.publishedWorks = v; }).catch(function(){}));
+              promises.push(roche.storage.get("favorites").then(function(v) { if (v) { state.favorites = v.favorites || []; state.readHistory = v.readHistory || []; state.readLater = v.readLater || []; } }).catch(function(){}));
             }
-            if (state.settings.fontSize) state.fontSize = state.settings.fontSize;
-            renderApp();
-          }).catch(function() { renderApp(); });
-        };
+            if (roche.persona) {
+              promises.push(roche.persona.getUserPersonas().then(function(list) { state.personas = list || []; }).catch(function(){}));
+              promises.push(roche.persona.getActiveUserPersona().then(function(p) { if (p && !state.activePersona) state.activePersona = p; }).catch(function(){}));
+            }
+            if (roche.character) {
+              promises.push(roche.character.list().then(function(list) { state.characters = list || []; }).catch(function(){}));
+            }
+            Promise.all(promises).then(function() {
+              if (state.settings.activePersonaId) {
+                for (var i = 0; i < state.personas.length; i++) {
+                  if (state.personas[i].id === state.settings.activePersonaId) { state.activePersona = state.personas[i]; break; }
+                }
+              }
+              if (state.settings.fontSize) state.fontSize = state.settings.fontSize;
+              renderApp();
+            }).catch(function() { renderApp(); });
+          };
 
-        loadData();
-      },
-      unmount: function() {
-        if (state.styleEl && state.styleEl.parentNode) state.styleEl.parentNode.removeChild(state.styleEl);
-        for (var i = 0; i < state.eventListeners.length; i++) {
-          var ev = state.eventListeners[i];
-          ev.el.removeEventListener(ev.type, ev.fn);
+          loadData();
+        },
+        unmount: function(container) {
+          if (state.styleEl && state.styleEl.parentNode) state.styleEl.parentNode.removeChild(state.styleEl);
+          for (var i = 0; i < state.eventListeners.length; i++) {
+            var ev = state.eventListeners[i];
+            ev.el.removeEventListener(ev.type, ev.fn);
+          }
+          state.eventListeners = [];
+          if (container) container.replaceChildren();
+          delete window.__hofter;
         }
-        state.eventListeners = [];
-        if (state.containerEl) state.containerEl.innerHTML = "";
-        delete window.__hofter;
       }
-    };
-  };
+    ]
+  });
 })();
