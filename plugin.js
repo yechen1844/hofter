@@ -478,7 +478,7 @@
 
   function renderHeaderContent(header) {
     var left = '<div class="hp-header-left"></div>', title = "", right = "";
-    if (state.currentPage === "home") { title = "hofter"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div>'; }
+    if (state.currentPage === "home") { title = "hofter"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div><div class="hp-icon-btn" onclick="window.__hofter.closeApp()">' + ICONS.close + '</div>'; }
     else if (state.currentPage === "discover") { title = "\u53d1\u73b0"; }
     else if (state.currentPage === "collection") { title = "\u6536\u85cf"; }
     else if (state.currentPage === "profile") { title = "\u6211\u7684"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showSettings()">' + ICONS.settings + '</div>'; }
@@ -1257,6 +1257,7 @@
       state.tropeTags.push({id:generateId(), name:name, description:"", createdBy:"user"});
       saveTropeTags(state.tropeTags); showToast("\u6807\u7b7e\u5df2\u6dfb\u52a0"); showTagManager();
     },
+    closeApp: function() { if (state.roche && state.roche.ui) state.roche.ui.closeApp(); },
     loadExploreTags: function() {
       showLoading();
       generateExploreTags(function(tags) {
