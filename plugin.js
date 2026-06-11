@@ -192,6 +192,7 @@
 
   /* ─── AI 调用层 ─── */
   function generateLayer1Summaries(lockTag, callback) {
+    try {
     debugLog("L1 start, cpTags:" + state.cpTags.length + " tropeTags:" + state.tropeTags.length);
     var cpTags = state.cpTags;
     if (cpTags.length > 5) {
@@ -204,6 +205,7 @@
     }
     var tropeTags = state.tropeTags, activePersona = state.activePersona;
     if (!cpTags || cpTags.length === 0) { showToast("\u8bf7\u5148\u6dfb\u52a0CP\u6807\u7b7e"); callback(null); return; }
+    debugLog("L1 building ctx, cpTags[0] keys:" + (cpTags[0] ? Object.keys(cpTags[0]).join(",") : "null"));
     var targetCount = Math.max(12, cpTags.length * 4);
     var ctx = ["\u8bf7\u751f\u6210 " + targetCount + " \u6761\u540c\u4eba\u6587\u6458\u8981\u3002", "",
       "\u683c\u5f0fJSON\uff1a{ \"summaries\": [{ \"title\":\"\", \"cp\":\"\", \"cpTagId\":\"\", \"warnings\":[], \"summary\":\"\", \"author_note_optional\":\"\", \"tags\":[], \"coverGradient\":\"\", \"likes\":0, \"comments\":0, \"words\":\"\", \"timeAgo\":\"\" }] }", "",
@@ -211,9 +213,11 @@
     for (var i = 0; i < cpTags.length; i++) {
       var tag = cpTags[i];
       if (lockTag && tag.id !== lockTag.id) continue;
+      var left = tag.leftSide || tag.attackSide || {};
+      var right = tag.rightSide || tag.defenseSide || {};
       ctx.push("CP #" + (i+1) + ": " + tag.name + " (id:" + tag.id + ")");
-      ctx.push("  \u5de6\u4f4d(" + tag.leftSide.name + "): " + (tag.leftSide.persona || tag.leftSide.bio || "\u65e0\u63cf\u8ff0"));
-      ctx.push("  \u53f3\u4f4d(" + tag.rightSide.name + "): " + (tag.rightSide.persona || tag.rightSide.bio || "\u65e0\u63cf\u8ff0"));
+      ctx.push("  \u5de6\u4f4d(" + (left.name || "\u672a\u77e5") + "): " + (left.persona || left.bio || "\u65e0\u63cf\u8ff0"));
+      ctx.push("  \u53f3\u4f4d(" + (right.name || "\u672a\u77e5") + "): " + (right.persona || right.bio || "\u65e0\u63cf\u8ff0"));
       if (tag.fandomTags && tag.fandomTags.length > 0) ctx.push("  \u2501\u2501 \u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a \u2501\u2501\n" + tag.fandomTags.join("\u3001"));
       ctx.push("");
     }
@@ -223,6 +227,7 @@
     ctx.push(tagStr);
     if (activePersona) { ctx.push("", "\u2501\u2501 \u5f53\u524d\u4f7f\u7528\u7684\u8eab\u4efd \u2501\u2501", "\u540d\u79f0: " + (activePersona.name || activePersona.handle || "\u672a\u77e5"), "\u4eba\u8bbe: " + (activePersona.persona || activePersona.bio || "")); }
     if (lockTag) ctx.push("", "\u6ce8\u610f\uff1a\u672c\u6b21\u53ea\u751f\u6210\u5173\u4e8e " + lockTag.name + " \u7684\u6458\u8981");
+    debugLog("L1 ctx built, lines:" + ctx.length + " tagStr len:" + tagStr.length);
 
     var doChat = function(memText) {
       var systemPrompt = PROMPTS.layer1Summary;
@@ -262,6 +267,7 @@
     };
     debugLog("L1 shouldAttach:" + shouldAttachMemory() + " mountedIds:" + JSON.stringify(state.settings.mountedConversationIds || []));
     if (shouldAttachMemory() && (state.settings.mountedConversationIds || []).length > 0) { debugLog("L1 loading memories..."); loadMountedMemories(function(mt) { debugLog("L1 memories loaded, len:" + mt.length); doChat(mt); }); } else { debugLog("L1 skipping memory, calling doChat directly"); doChat(""); }
+    } catch(e) { debugLog("L1 FATAL:" + e.message + " stack:" + (e.stack||"").substring(0,300)); callback(null); }
   }
 
   function generateLayer2Full(summary, callback) {
@@ -1601,7 +1607,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.1.3",
+    version: "1.1.4",
     apps: [
       {
         id: "hofter-home",
