@@ -639,7 +639,8 @@
     else if (state.currentPage === "collection") { title = "\u6536\u85cf"; }
     else if (state.currentPage === "profile") { title = "\u6211\u7684"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showSettings()">' + ICONS.settings + '</div>'; }
     else if (state.currentPage === "tagPage") { title = state.currentTagPage ? state.currentTagPage.name : ""; left = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.goBackFromTag()">' + ICONS.back + '</div></div>'; }
-    header.innerHTML = left + '<div class="hp-header-title">' + escapeHtml(title) + '</div><div class="hp-header-right">' + right + '</div>';
+    var titleHtml = (state.currentPage === "home") ? title : escapeHtml(title);
+    header.innerHTML = left + '<div class="hp-header-title">' + titleHtml + '</div><div class="hp-header-right">' + right + '</div>';
   }
 
   function renderNavContent(nav) {
