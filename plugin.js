@@ -145,7 +145,7 @@
     wrapper.style.cssText = "position:fixed;bottom:60px;left:4px;right:4px;max-height:45vh;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:0;overflow:hidden;z-index:99999;border-radius:10px;display:flex;flex-direction:column;";
     var toolbar = document.createElement("div");
     toolbar.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.5);color:#0f0;font-size:11px;flex-shrink:0;";
-    toolbar.innerHTML = '<span>hofter debug (v1.2.4)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
+    toolbar.innerHTML = '<span>hofter debug (v1.3.0)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
     var content = document.createElement("pre");
     content.id = "hp-debug-content";
     content.style.cssText = "flex:1;overflow-y:auto;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;color:#0f0;";
@@ -321,7 +321,8 @@
     var tagStr = "";
     for (var j = 0; j < tropeTags.length; j++) tagStr += (j > 0 ? "\u3001" : "") + tropeTags[j].name;
     ctx.push(tagStr);
-    if (activePersona) { ctx.push("", "\u2501\u2501 \u5f53\u524d\u4f7f\u7528\u7684\u8eab\u4efd \u2501\u2501", "\u540d\u79f0: " + (activePersona.name || activePersona.handle || "\u672a\u77e5"), "\u4eba\u8bbe: " + (activePersona.persona || activePersona.bio || "")); }
+    if (activePersona) { ctx.push("", "\u2501\u2501 \u7b2c\u4e09\u89d2\u8272\uff08\u53ef\u4f5c\u4e3a\u53c2\u8003\u4eba\u7269\u6216\u4e92\u52a8\u5bf9\u8c61\uff09 \u2501\u2501", "\u540d\u79f0: " + (activePersona.name || activePersona.handle || "\u672a\u77e5"), "\u4eba\u8bbe: " + (activePersona.persona || activePersona.bio || "")); }
+
     if (lockTag) ctx.push("", "\u6ce8\u610f\uff1a\u672c\u6b21\u53ea\u751f\u6210\u5173\u4e8e " + lockTag.name + " \u7684\u6458\u8981");
     debugLog("L1 ctx built, lines:" + ctx.length + " tagStr len:" + tagStr.length);
 
@@ -371,6 +372,7 @@
       "\u2501\u2501 \u89d2\u8272\u4eba\u8bbe \u2501\u2501",
       "\u5de6\u4f4d\uff08" + (left.name || "\u672a\u77e5") + "\uff09\uff1a", left.persona || left.bio || "\u65e0\u63cf\u8ff0", "",
       "\u53f3\u4f4d\uff08" + (right.name || "\u672a\u77e5") + "\uff09\uff1a", right.persona || right.bio || "\u65e0\u63cf\u8ff0"].join("\n");
+    debugLog("L2 left isPersona:" + !!(left.persona) + " right isPersona:" + !!(right.persona));
     if (cpTag.fandomTags && cpTag.fandomTags.length > 0) {
       userMsg += "\n\n\u2501\u2501 \u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a \u2501\u2501\n" + cpTag.fandomTags.join("\u3001");
     }
@@ -428,7 +430,7 @@
             var jsonStr = stripXmlAndExtractJson(raw);
             if (!jsonStr) { debugLog("L2 no JSON found"); callback(null); return; }
             var data = JSON.parse(jsonStr);
-            debugLog("L2 parsed OK, hasContent:" + !!(data.content || data.text) + " hasContSummary:" + !!data.continuation_summary);
+            debugLog("L2 parsed OK, chapters:" + (data.chapters ? data.chapters.length : 0) + " hasContSummary:" + !!data.continuation_summary);
             if (data && data.continuation_summary) {
               summary.continuationSummary = data.continuation_summary;
             }
@@ -879,6 +881,17 @@
   }
 
   /* ─── 首页 ─── */
+  var PAGE_SIZE = 20;
+  function loadMoreSummaries(grid) {
+    if (!grid || state._homeAllLoaded) return;
+    var start = state._homePageEnd || 0;
+    var end = Math.min(start + PAGE_SIZE, state.summaries.length);
+    for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(state.summaries[i]));
+    state._homePageEnd = end;
+    state._homeAllLoaded = end >= state.summaries.length;
+    var moreBtn = document.getElementById("hp-load-more");
+    if (state._homeAllLoaded && moreBtn) moreBtn.remove();
+  }
   function renderHomePage(container) {
     var tabs = document.createElement("div"); tabs.className = "hp-tabs";
     tabs.innerHTML = '<div class="hp-tab ' + (state.homeTab==="follow"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'follow\')">\u5173\u6ce8</div><div class="hp-tab ' + (state.homeTab==="subscribe"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'subscribe\')">\u8ba2\u9605</div>';
@@ -886,8 +899,23 @@
     if (state.homeTab === "follow") {
       if (state.summaries.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
       var grid = document.createElement("div"); grid.className = "hp-card-grid";
-      for (var i = 0; i < state.summaries.length; i++) grid.appendChild(createSummaryCard(state.summaries[i]));
+      var displayCount = Math.min(state.summaries.length, PAGE_SIZE);
+      state._homePageEnd = displayCount;
+      state._homeAllLoaded = displayCount >= state.summaries.length;
+      for (var i = 0; i < displayCount; i++) grid.appendChild(createSummaryCard(state.summaries[i]));
       container.appendChild(grid);
+      if (!state._homeAllLoaded) {
+        var moreBtn = document.createElement("div");
+        moreBtn.id = "hp-load-more";
+        moreBtn.style.cssText = "text-align:center;padding:16px;color:var(--text-hint);font-size:13px;cursor:pointer";
+        moreBtn.textContent = "\u52a0\u8f7d\u66f4\u591a...";
+        moreBtn.onclick = function() { loadMoreSummaries(grid); };
+        container.appendChild(moreBtn);
+      }
+      var totalInfo = document.createElement("div");
+      totalInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
+      totalInfo.textContent = "\u5171 " + state.summaries.length + " \u7bc7";
+      container.appendChild(totalInfo);
     } else {
       var sec = document.createElement("div");
       sec.innerHTML = '<div class="hp-section-title">\u6211\u7684CP</div>';
@@ -1097,17 +1125,94 @@
 
   /* ─── 下拉刷新 ─── */
   function initPullToRefresh(el) {
-    var startY = 0, pulling = false;
-    function onTS(e) { if (el.scrollTop === 0) { startY = e.touches[0].clientY; pulling = true; } }
-    function onTM(e) { if (!pulling) return; }
-    function onTE(e) { if (!pulling) return; pulling = false; var diff = (e.changedTouches[0]||{}).clientY - startY; if (diff > 80 && el.scrollTop === 0) doRefresh(); }
-    el.addEventListener("touchstart", onTS, {passive:true}); el.addEventListener("touchmove", onTM, {passive:true}); el.addEventListener("touchend", onTE, {passive:true});
+    var startY = 0, pulling = false, currentDiff = 0;
+    var pullIndicator = null;
+    var THRESHOLD = 80;
+    var MAX_PULL = 140;
+    function createIndicator() {
+      if (pullIndicator) return;
+      pullIndicator = document.createElement("div");
+      pullIndicator.id = "hp-pull-indicator";
+      pullIndicator.style.cssText = "text-align:center;padding:12px 0;color:var(--text-hint);font-size:13px;transition:opacity .2s;opacity:0;";
+      pullIndicator.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;transition:transform .3s"><path d="M12 5v14M5 12l7 7 7-7"/></svg><span>\u4e0b\u62c9\u5237\u65b0</span>';
+      el.insertBefore(pullIndicator, el.firstChild);
+    }
+    function removeIndicator() {
+      if (pullIndicator) { pullIndicator.remove(); pullIndicator = null; }
+    }
+    function updateIndicator(diff) {
+      if (!pullIndicator) return;
+      var progress = Math.min(diff / THRESHOLD, 1);
+      pullIndicator.style.opacity = String(Math.min(progress * 1.5, 1));
+      var arrow = pullIndicator.querySelector("svg");
+      if (arrow) arrow.style.transform = "rotate(" + (progress * 180) + "deg)";
+      var text = pullIndicator.querySelector("span");
+      if (text) text.textContent = diff >= THRESHOLD ? "\u91ca\u653e\u5237\u65b0" : "\u4e0b\u62c9\u5237\u65b0";
+    }
+    function onTS(e) {
+      if (el.scrollTop > 5 || state.isLoading) return;
+      startY = e.touches[0].clientY;
+      pulling = true;
+      currentDiff = 0;
+      createIndicator();
+    }
+    function onTM(e) {
+      if (!pulling) return;
+      var diff = e.touches[0].clientY - startY;
+      if (diff < 0) { currentDiff = 0; removeIndicator(); return; }
+      currentDiff = Math.min(diff * 0.5, MAX_PULL);
+      if (currentDiff > 5) {
+        el.style.transform = "translateY(" + currentDiff + "px)";
+        el.style.transition = "none";
+        updateIndicator(currentDiff * 2);
+      }
+    }
+    function onTE(e) {
+      if (!pulling) return;
+      pulling = false;
+      el.style.transition = "transform .3s ease";
+      el.style.transform = "";
+      if (currentDiff * 2 >= THRESHOLD && el.scrollTop === 0) {
+        if (pullIndicator) {
+          var text = pullIndicator.querySelector("span");
+          if (text) text.textContent = "\u5237\u65b0\u4e2d...";
+          var arrow = pullIndicator.querySelector("svg");
+          if (arrow) arrow.style.animation = "hpSpin .8s linear infinite";
+        }
+        doRefresh();
+        setTimeout(removeIndicator, 1500);
+      } else {
+        removeIndicator();
+      }
+      currentDiff = 0;
+    }
+    el.addEventListener("touchstart", onTS, {passive:true});
+    el.addEventListener("touchmove", onTM, {passive:false});
+    el.addEventListener("touchend", onTE, {passive:true});
     state.eventListeners.push({el:el,type:"touchstart",fn:onTS},{el:el,type:"touchmove",fn:onTM},{el:el,type:"touchend",fn:onTE});
-    var mStartY = 0, mPulling = false;
-    function onMD(e) { if (el.scrollTop === 0) { mStartY = e.clientY; mPulling = true; } }
-    function onMU(e) { if (!mPulling) return; mPulling = false; if (e.clientY - mStartY > 80 && el.scrollTop === 0) doRefresh(); }
-    el.addEventListener("mousedown", onMD); el.addEventListener("mouseup", onMU);
-    state.eventListeners.push({el:el,type:"mousedown",fn:onMD},{el:el,type:"mouseup",fn:onMU});
+    var mStartY = 0, mPulling = false, mDiff = 0;
+    function onMD(e) { if (el.scrollTop > 5 || state.isLoading) return; mStartY = e.clientY; mPulling = true; createIndicator(); }
+    function onMM(e) {
+      if (!mPulling) return;
+      mDiff = Math.min((e.clientY - mStartY) * 0.5, MAX_PULL);
+      if (mDiff > 5) { el.style.transform = "translateY(" + mDiff + "px)"; el.style.transition = "none"; updateIndicator(mDiff * 2); }
+    }
+    function onMU(e) {
+      if (!mPulling) return;
+      mPulling = false;
+      el.style.transition = "transform .3s ease";
+      el.style.transform = "";
+      if (mDiff * 2 >= THRESHOLD && el.scrollTop === 0) {
+        if (pullIndicator) { var t = pullIndicator.querySelector("span"); if (t) t.textContent = "\u5237\u65b0\u4e2d..."; }
+        doRefresh();
+        setTimeout(removeIndicator, 1500);
+      } else { removeIndicator(); }
+      mDiff = 0;
+    }
+    el.addEventListener("mousedown", onMD);
+    el.addEventListener("mousemove", onMM);
+    el.addEventListener("mouseup", onMU);
+    state.eventListeners.push({el:el,type:"mousedown",fn:onMD},{el:el,type:"mousemove",fn:onMM},{el:el,type:"mouseup",fn:onMU});
   }
 
   function doRefresh() {
@@ -1119,11 +1224,13 @@
       hideLoading();
       if (summaries && summaries.length > 0) {
         for (var i = 0; i < summaries.length; i++) summaries[i].id = summaries[i].id || generateId();
-        for (var j = 0; j < summaries.length; j++) {
-          var exists = false;
-          for (var k = 0; k < state.summaries.length; k++) { if (state.summaries[k].id === summaries[j].id) { exists = true; break; } }
-          if (!exists) state.summaries.push(summaries[j]);
+        var newIds = {};
+        for (var j = 0; j < summaries.length; j++) newIds[summaries[j].id] = true;
+        var existing = [];
+        for (var k = 0; k < state.summaries.length; k++) {
+          if (!newIds[state.summaries[k].id]) existing.push(state.summaries[k]);
         }
+        state.summaries = summaries.concat(existing);
         saveSummariesCache(state.summaries);
         renderApp();
         showToast("\u5237\u65b0\u6210\u529f\uff0c\u83b7\u53d6" + summaries.length + "\u6761\u65b0\u5185\u5bb9");
@@ -1802,7 +1909,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.2.5",
+    version: "1.3.0",
     apps: [
       {
         id: "hofter-home",
