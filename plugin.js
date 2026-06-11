@@ -190,6 +190,75 @@
     }
   }
 
+  /* ─── AI 流式调用 ─── */
+  function aiChatStream(messages, temperature, onProgress, onDone, onError) {
+    var chatPromise;
+    try {
+      chatPromise = state.roche.ai.chat({ messages: messages, temperature: temperature, stream: true });
+    } catch(e) {
+      debugLog("stream: sync error on call, fallback non-stream");
+      state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
+        var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
+        onDone(raw);
+      }).catch(function(e2) { if (onError) onError(e2); else onDone(""); });
+      return;
+    }
+    chatPromise.then(function(response) {
+      debugLog("stream resp type:" + typeof response);
+      var body = response && (response.body || response.stream);
+      if (body && typeof body.getReader === "function") {
+        var reader = body.getReader();
+        var decoder = new TextDecoder();
+        var fullText = "";
+        function pump() {
+          reader.read().then(function(result) {
+            if (result.done) {
+              debugLog("stream done, total:" + fullText.length);
+              onDone(fullText);
+              return;
+            }
+            var chunk = decoder.decode(result.value, { stream: true });
+            fullText += chunk;
+            if (onProgress) onProgress(fullText);
+            pump();
+          }).catch(function(e) {
+            debugLog("stream read err:" + e.message + ", partial len:" + fullText.length);
+            onDone(fullText);
+          });
+        }
+        pump();
+      } else {
+        debugLog("stream: no getReader, extracting text directly");
+        var raw = "";
+        if (typeof response === "string") raw = response;
+        else if (response && response.text && typeof response.text === "string") raw = response.text;
+        else if (response && typeof response.text === "function") {
+          response.text().then(function(t) { onDone(t); }).catch(function(e) { if (onError) onError(e); else onDone(""); });
+          return;
+        } else raw = String(response || "");
+        onDone(raw);
+      }
+    }).catch(function(e) {
+      debugLog("stream chat err:" + (e && e.message ? e.message : String(e)) + ", fallback non-stream");
+      state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
+        var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
+        onDone(raw);
+      }).catch(function(e2) { if (onError) onError(e2); else onDone(""); });
+    });
+  }
+
+  function stripXmlAndExtractJson(raw) {
+    var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "")
+      .replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "")
+      .replace(/<core_philosophy>[\s\S]*?<\/core_philosophy>/gi, "")
+      .replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "")
+      .replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "")
+      .replace(/<inline_check_system>[\s\S]*?<\/inline_check_system>/gi, "")
+      .replace(/<[^>]+>/g, "");
+    var m = stripped.match(/\{[\s\S]*\}/);
+    return m ? m[0] : null;
+  }
+
   /* ─── AI 调用层 ─── */
   function generateLayer1Summaries(lockTag, callback) {
     try {
@@ -236,37 +305,26 @@
         { role: "system", content: systemPrompt },
         { role: "user", content: ctx.join("\n") + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
       ];
-      debugLog("L1 calling ai.chat, msgs count:" + chatMessages.length + " sysLen:" + systemPrompt.length + " usrLen:" + chatMessages[1].content.length);
-      try {
-        var chatPromise = state.roche.ai.chat({ messages: chatMessages, temperature: 0.85 });
-        debugLog("L1 ai.chat returned type:" + typeof chatPromise + " isPromise:" + !!(chatPromise && chatPromise.then));
-        if (!chatPromise || !chatPromise.then) {
-          debugLog("L1 ai.chat did NOT return a promise! val:" + JSON.stringify(chatPromise).substring(0, 200));
-          callback(null); return;
-        }
-        chatPromise.then(function(result) {
-          debugLog("L1 promise resolved! type:" + typeof result + " keys:" + (result ? Object.keys(result).join(",") : "null"));
+      debugLog("L1 calling aiChatStream, sysLen:" + systemPrompt.length + " usrLen:" + chatMessages[1].content.length);
+      aiChatStream(chatMessages, 0.85,
+        function(progress) { debugLog("L1 streaming... len:" + progress.length); },
+        function(raw) {
+          debugLog("L1 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
           try {
-            var raw = "";
-            if (result && typeof result === "string") raw = result;
-            else if (result && result.text) raw = result.text;
-            else if (result && result.content) raw = result.content;
-            else raw = String(result || "");
-            debugLog("L1 raw len:" + raw.length + " first200:" + raw.substring(0, 200));
-            var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "").replace(/<core_philosophy>[\s\S]*?<\/core_philosophy>/gi, "").replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "").replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "").replace(/<inline_check_system>[\s\S]*?<\/inline_check_system>/gi, "");
-            var m = stripped.match(/\{[\s\S]*\}/);
-            if (!m) { debugLog("L1 no JSON found, stripped:" + stripped.substring(0, 300)); callback(null); return; }
-            var jsonStr = m[0];
+            var jsonStr = stripXmlAndExtractJson(raw);
+            if (!jsonStr) { debugLog("L1 no JSON found"); callback(null); return; }
             var parsed = JSON.parse(jsonStr);
             debugLog("L1 parsed OK, count:" + (parsed.summaries || []).length);
             callback(parsed.summaries || parsed.results || null);
-          }
-          catch(e) { debugLog("L1 parse error:" + e.message); callback(null); }
-        }).catch(function(e) { debugLog("L1 chat catch:" + (e&&e.message?e.message:String(e))); callback(null); });
-      } catch(e) { debugLog("L1 sync error:" + e.message); callback(null); }
+          } catch(e) { debugLog("L1 parse error:" + e.message); callback(null); }
+        },
+        function(e) { debugLog("L1 stream error:" + (e&&e.message?e.message:String(e))); callback(null); }
+      );
     };
-    debugLog("L1 shouldAttach:" + shouldAttachMemory() + " mountedIds:" + JSON.stringify(state.settings.mountedConversationIds || []));
-    if (shouldAttachMemory() && (state.settings.mountedConversationIds || []).length > 0) { debugLog("L1 loading memories..."); loadMountedMemories(function(mt) { debugLog("L1 memories loaded, len:" + mt.length); doChat(mt); }); } else { debugLog("L1 skipping memory, calling doChat directly"); doChat(""); }
+    var attachMem = shouldAttachMemory();
+    var mountedIds = state.settings.mountedConversationIds || [];
+    debugLog("L1 attachMem:" + attachMem + " mountedIds:" + JSON.stringify(mountedIds));
+    if (attachMem && mountedIds.length > 0) { debugLog("L1 loading memories..."); loadMountedMemories(function(mt) { debugLog("L1 memories loaded, len:" + mt.length); doChat(mt.substring(0, 3000)); }); } else { debugLog("L1 skipping memory"); doChat(""); }
     } catch(e) { debugLog("L1 FATAL:" + e.message + " stack:" + (e.stack||"").substring(0,300)); callback(null); }
   }
 
@@ -274,13 +332,15 @@
     var cpTag = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === summary.cpTagId) { cpTag = state.cpTags[i]; break; } }
     if (!cpTag) { callback(null); return; }
+    var left = cpTag.leftSide || cpTag.attackSide || {};
+    var right = cpTag.rightSide || cpTag.defenseSide || {};
     var userMsg = ["\u8bf7\u521b\u4f5c\u4ee5\u4e0b\u540c\u4eba\u6587\u7684\u5b8c\u6574\u5185\u5bb9\uff1a", "",
       "- \u6807\u9898\uff1a" + summary.title, "- CP\uff1a" + (summary.cp || summary.cpTagName || ""),
       "- \u5708\u5b50\uff1a" + (summary.fandomTag || ""), "- \u8bbe\u5b9a/\u6897\uff1a" + (summary.tags ? summary.tags.join(", ") : (summary.tropeTags ? summary.tropeTags.join(", ") : "\u65e0")),
       "- \u6458\u8981\u53c2\u8003\uff1a" + (summary.summary || summary.excerpt || ""), "",
       "\u2501\u2501 \u89d2\u8272\u4eba\u8bbe \u2501\u2501",
-      "\u5de6\u4f4d\uff08" + cpTag.leftSide.name + "\uff09\uff1a", cpTag.leftSide.persona || cpTag.leftSide.bio || "\u65e0\u63cf\u8ff0", "",
-      "\u53f3\u4f4d\uff08" + cpTag.rightSide.name + "\uff09\uff1a", cpTag.rightSide.persona || cpTag.rightSide.bio || "\u65e0\u63cf\u8ff0"].join("\n");
+      "\u5de6\u4f4d\uff08" + (left.name || "\u672a\u77e5") + "\uff09\uff1a", left.persona || left.bio || "\u65e0\u63cf\u8ff0", "",
+      "\u53f3\u4f4d\uff08" + (right.name || "\u672a\u77e5") + "\uff09\uff1a", right.persona || right.bio || "\u65e0\u63cf\u8ff0"].join("\n");
     if (cpTag.fandomTags && cpTag.fandomTags.length > 0) {
       userMsg += "\n\n\u2501\u2501 \u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a \u2501\u2501\n" + cpTag.fandomTags.join("\u3001");
     }
@@ -294,48 +354,44 @@
     }
 
     var doChat = function(memText) {
-      state.roche.ai.chat({ messages: [
+      aiChatStream([
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
-      ], temperature: 0.8 }).then(function(result) {
+      ], 0.8, null, function(raw) {
         try {
-          var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
-          var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<[^>]+>/g, "");
-          var m = stripped.match(/\{[\s\S]*\}/);
-          var data = m ? JSON.parse(m[0]) : null;
+          var jsonStr = stripXmlAndExtractJson(raw);
+          var data = jsonStr ? JSON.parse(jsonStr) : null;
           if (data && data.continuation_summary) {
             summary.continuationSummary = data.continuation_summary;
           }
           callback(data);
-        }
-        catch(e) { callback(null); }
-      }).catch(function() { callback(null); });
+        } catch(e) { debugLog("L2 parse error:" + e.message); callback(null); }
+      }, function() { callback(null); });
     };
-    if (shouldAttachMemory()) loadMountedMemories(function(mt) { doChat(mt); }); else doChat("");
+    var attachMem = shouldAttachMemory();
+    var mountedIds = state.settings.mountedConversationIds || [];
+    if (attachMem && mountedIds.length > 0) { loadMountedMemories(function(mt) { doChat(mt.substring(0, 3000)); }); } else { doChat(""); }
   }
 
   function generateLayer3Comments(fullText, callback) {
-    state.roche.ai.chat({ messages: [
+    aiChatStream([
       { role: "system", content: PROMPTS.layer3Comments },
       { role: "user", content: "\u4ee5\u4e0b\u662f\u540c\u4eba\u6587\u5185\u5bb9\uff0c\u8bf7\u751f\u6210\u8bc4\u8bba\uff1a\n\n" + fullText.substring(0, 3000) }
-    ], temperature: 0.75 }).then(function(result) {
+    ], 0.75, null, function(raw) {
       try {
-        var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
-        var stripped = raw.replace(/<[^>]+>/g, "");
-        var m = stripped.match(/\{[\s\S]*\}/);
-        var data = m ? JSON.parse(m[0]) : {};
-        var comments = data.comments || [];
-        var annotations = data.annotations || [];
-        callback(comments, annotations);
-      }
-      catch(e) { callback([], []); }
-    }).catch(function() { callback([], []); });
+        var jsonStr = stripXmlAndExtractJson(raw);
+        var data = jsonStr ? JSON.parse(jsonStr) : {};
+        callback(data.comments || [], data.annotations || []);
+      } catch(e) { callback([], []); }
+    }, function() { callback([], []); });
   }
 
   function generateContinuation(summary, previousContent, previousSummary, callback) {
     var cpTag = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === summary.cpTagId) { cpTag = state.cpTags[i]; break; } }
     if (!cpTag) { callback(null); return; }
+    var left = cpTag.leftSide || cpTag.attackSide || {};
+    var right = cpTag.rightSide || cpTag.defenseSide || {};
     var wordCountMin = state.settings.wordCountMin || 3000;
     var wordCountMax = state.settings.wordCountMax || 8000;
     var wordCountStr = wordCountMin + "-" + wordCountMax + "\u5b57";
@@ -344,8 +400,8 @@
       "- \u6807\u9898\uff1a" + summary.title, "- CP\uff1a" + (summary.cp || summary.cpTagName || ""),
       "- \u6458\u8981\uff1a" + (summary.summary || summary.excerpt || ""), "",
       "\u2501\u2501 \u89d2\u8272\u4eba\u8bbe \u2501\u2501",
-      "\u5de6\u4f4d\uff08" + cpTag.leftSide.name + "\uff09\uff1a", cpTag.leftSide.persona || cpTag.leftSide.bio || "\u65e0\u63cf\u8ff0", "",
-      "\u53f3\u4f4d\uff08" + cpTag.rightSide.name + "\uff09\uff1a", cpTag.rightSide.persona || cpTag.rightSide.bio || "\u65e0\u63cf\u8ff0", "",
+      "\u5de6\u4f4d\uff08" + (left.name || "\u672a\u77e5") + "\uff09\uff1a", left.persona || left.bio || "\u65e0\u63cf\u8ff0", "",
+      "\u53f3\u4f4d\uff08" + (right.name || "\u672a\u77e5") + "\uff09\uff1a", right.persona || right.bio || "\u65e0\u63cf\u8ff0", "",
       "\u2501\u2501 \u524d\u6587\u4fe1\u606f \u2501\u2501"].join("\n");
     if (previousSummary) userMsg += "\n\u524d\u6587\u6458\u8981\uff1a" + previousSummary;
     if (previousContent) userMsg += "\n\u524d\u6587\u5185\u5bb9\uff08\u6700\u540e2000\u5b57\uff09\uff1a" + previousContent.substring(Math.max(0, previousContent.length - 2000));
@@ -354,21 +410,19 @@
     }
 
     var doChat = function(memText) {
-      state.roche.ai.chat({ messages: [
+      aiChatStream([
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
-      ], temperature: 0.8 }).then(function(result) {
+      ], 0.8, null, function(raw) {
         try {
-          var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
-          var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<[^>]+>/g, "");
-          var m = stripped.match(/\{[\s\S]*\}/);
-          var data = m ? JSON.parse(m[0]) : null;
-          callback(data);
-        }
-        catch(e) { callback(null); }
-      }).catch(function() { callback(null); });
+          var jsonStr = stripXmlAndExtractJson(raw);
+          callback(jsonStr ? JSON.parse(jsonStr) : null);
+        } catch(e) { callback(null); }
+      }, function() { callback(null); });
     };
-    if (shouldAttachMemory()) loadMountedMemories(function(mt) { doChat(mt); }); else doChat("");
+    var attachMem = shouldAttachMemory();
+    var mountedIds = state.settings.mountedConversationIds || [];
+    if (attachMem && mountedIds.length > 0) { loadMountedMemories(function(mt) { doChat(mt.substring(0, 3000)); }); } else { doChat(""); }
   }
 
   function generateExploreTags(callback) {
@@ -387,18 +441,15 @@
       cpInspiration = "\n\n\u7528\u6237\u5173\u6ce8\u7684CP\uff08\u53ef\u4f5c\u4e3a\u7075\u611f\u53c2\u8003\uff09\uff1a" + cpNames.join("\u3001");
     }
     var excludeList = existingNames.length > 0 ? "\n\n\u7528\u6237\u5df2\u6709\u6807\u7b7e\uff08\u7edd\u5bf9\u4e0d\u53ef\u91cd\u590d\uff09\uff1a" + existingNames.join("\u3001") : "";
-    state.roche.ai.chat({ messages: [
+    aiChatStream([
       { role: "system", content: PROMPTS.exploreTags },
       { role: "user", content: "\u8bf7\u751f\u6210\u540c\u4eba\u6807\u7b7e\u4f9b\u7528\u6237\u63a2\u7d22\u3002" + excludeList + cpInspiration }
-    ], temperature: 0.9 }).then(function(result) {
+    ], 0.9, null, function(raw) {
       try {
-        var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
-        var stripped = raw.replace(/<[^>]+>/g, "");
-        var m = stripped.match(/\{[\s\S]*\}/);
-        callback(m ? (JSON.parse(m[0]).tags || []) : []);
-      }
-      catch(e) { callback([]); }
-    }).catch(function() { callback([]); });
+        var jsonStr = stripXmlAndExtractJson(raw);
+        callback(jsonStr ? (JSON.parse(jsonStr).tags || []) : []);
+      } catch(e) { callback([]); }
+    }, function() { callback([]); });
   }
 
   /* ─── CSS 样式 ─── */
@@ -1450,14 +1501,14 @@
       var contentInput = document.getElementById("hp-create-content");
       if (!contentInput || !contentInput.value.trim()) { showToast("\u8bf7\u5148\u5199\u4e00\u4e9b\u5185\u5bb9"); return; }
       showLoading();
-      state.roche.ai.chat({ messages: [
+      aiChatStream([
         {role:"system", content:"\u4f60\u662f\u4e00\u4f4d\u540c\u4eba\u5c0f\u8bf4\u4f5c\u5bb6\u3002\u8bf7\u7eed\u5199\u4ee5\u4e0b\u5185\u5bb9\uff0c\u4fdd\u6301\u98ce\u683c\u4e00\u81f4\uff0c800-1500\u5b57\u3002\u53ea\u8f93\u51fa\u7eed\u5199\u5185\u5bb9\uff0c\u4e0d\u8981\u89e3\u91ca\u3002"},
         {role:"user", content: "\u8bf7\u7eed\u5199\uff1a\n" + contentInput.value}
-      ], temperature: 0.8 }).then(function(result) {
+      ], 0.8, null, function(raw) {
         hideLoading();
-        if (result && result.text) { contentInput.value += "\n\n" + result.text; showToast("\u7075\u611f\u8865\u5168\u5b8c\u6210"); }
+        if (raw && raw.trim()) { contentInput.value += "\n\n" + raw.trim(); showToast("\u7075\u611f\u8865\u5168\u5b8c\u6210"); }
         else { showToast("\u8865\u5168\u5931\u8d25"); }
-      }).catch(function() { hideLoading(); showToast("\u8865\u5168\u5931\u8d25"); });
+      }, function() { hideLoading(); showToast("\u8865\u5168\u5931\u8d25"); });
     },
     toggleLike: function(el) {
       if (!el) return;
@@ -1607,7 +1658,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.1.4",
+    version: "1.2.0",
     apps: [
       {
         id: "hofter-home",
