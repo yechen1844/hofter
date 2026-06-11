@@ -220,21 +220,37 @@
       if (body && typeof body.getReader === "function") {
         var reader = body.getReader();
         var decoder = new TextDecoder();
-        var fullText = "";
+        var fullContent = "";
+        var sseBuffer = "";
         function pump() {
           reader.read().then(function(result) {
             if (result.done) {
-              debugLog("stream done, total:" + fullText.length);
-              onDone(fullText);
+              debugLog("stream done, content len:" + fullContent.length);
+              onDone(fullContent);
               return;
             }
             var chunk = decoder.decode(result.value, { stream: true });
-            fullText += chunk;
-            if (onProgress) onProgress(fullText);
+            sseBuffer += chunk;
+            var lines = sseBuffer.split("\n");
+            sseBuffer = lines.pop() || "";
+            for (var li = 0; li < lines.length; li++) {
+              var line = lines[li].trim();
+              if (line.indexOf("data: ") !== 0) continue;
+              var dataStr = line.substring(6);
+              if (dataStr === "[DONE]") continue;
+              try {
+                var parsed = JSON.parse(dataStr);
+                var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
+                if (delta && delta.content) {
+                  fullContent += delta.content;
+                  if (onProgress) onProgress(fullContent);
+                }
+              } catch(e) { /* skip unparseable lines */ }
+            }
             pump();
           }).catch(function(e) {
-            debugLog("stream read err:" + e.message + ", partial len:" + fullText.length);
-            onDone(fullText);
+            debugLog("stream read err:" + e.message + ", content len:" + fullContent.length);
+            onDone(fullContent);
           });
         }
         pump();
@@ -1103,16 +1119,12 @@
       hideLoading();
       if (summaries && summaries.length > 0) {
         for (var i = 0; i < summaries.length; i++) summaries[i].id = summaries[i].id || generateId();
-        if (lockTag) {
-          for (var j = 0; j < summaries.length; j++) {
-            var exists = false;
-            for (var k = 0; k < state.summaries.length; k++) { if (state.summaries[k].id === summaries[j].id) { exists = true; break; } }
-            if (!exists) state.summaries.push(summaries[j]);
-          }
-          saveSummariesCache(state.summaries);
-        } else {
-          saveSummariesCache(summaries);
+        for (var j = 0; j < summaries.length; j++) {
+          var exists = false;
+          for (var k = 0; k < state.summaries.length; k++) { if (state.summaries[k].id === summaries[j].id) { exists = true; break; } }
+          if (!exists) state.summaries.push(summaries[j]);
         }
+        saveSummariesCache(state.summaries);
         renderApp();
         showToast("\u5237\u65b0\u6210\u529f\uff0c\u83b7\u53d6" + summaries.length + "\u6761\u65b0\u5185\u5bb9");
       } else { showToast("\u5237\u65b0\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5"); }
@@ -1790,7 +1802,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.2.4",
+    version: "1.2.5",
     apps: [
       {
         id: "hofter-home",
