@@ -131,9 +131,9 @@
   var debugPanelVisible = false;
   function debugLog(msg) {
     debugLogs.push("[" + new Date().toLocaleTimeString() + "] " + msg);
-    if (debugLogs.length > 50) debugLogs.shift();
+    if (debugLogs.length > 200) debugLogs.shift();
     if (debugPanelVisible) {
-      var panel = document.getElementById("hp-debug-panel");
+      var panel = document.getElementById("hp-debug-content");
       if (panel) { panel.textContent = debugLogs.join("\n"); panel.scrollTop = panel.scrollHeight; }
     }
   }
@@ -142,12 +142,20 @@
     var existing = document.getElementById("hp-debug-panel");
     if (existing) { existing.remove(); debugPanelVisible = false; return; }
     if (!debugPanelVisible) return;
-    var panel = document.createElement("pre");
-    panel.id = "hp-debug-panel";
-    panel.style.cssText = "position:fixed;bottom:70px;left:4px;right:4px;max-height:40vh;background:rgba(0,0,0,0.88);color:#0f0;font-size:11px;font-family:monospace;padding:8px;overflow-y:auto;z-index:9999;border-radius:8px;white-space:pre-wrap;word-break:break-all;margin:0;";
-    panel.textContent = debugLogs.join("\n");
-    panel.scrollTop = panel.scrollHeight;
-    state.containerEl.appendChild(panel);
+    var wrapper = document.createElement("div");
+    wrapper.id = "hp-debug-panel";
+    wrapper.style.cssText = "position:fixed;bottom:60px;left:4px;right:4px;max-height:45vh;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:0;overflow:hidden;z-index:9999;border-radius:10px;display:flex;flex-direction:column;";
+    var toolbar = document.createElement("div");
+    toolbar.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.5);color:#0f0;font-size:11px;flex-shrink:0;";
+    toolbar.innerHTML = '<span>hofter debug (v1.2.2)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
+    var content = document.createElement("pre");
+    content.id = "hp-debug-content";
+    content.style.cssText = "flex:1;overflow-y:auto;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;color:#0f0;";
+    content.textContent = debugLogs.join("\n");
+    content.scrollTop = content.scrollHeight;
+    wrapper.appendChild(toolbar);
+    wrapper.appendChild(content);
+    state.containerEl.appendChild(wrapper);
   }
 
   function showLoading() {
@@ -334,11 +342,14 @@
   }
 
   function generateLayer2Full(summary, callback) {
+    try {
+    debugLog("L2 start, title:" + (summary.title || "?") + " cpTagId:" + (summary.cpTagId || "?"));
     var cpTag = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === summary.cpTagId) { cpTag = state.cpTags[i]; break; } }
-    if (!cpTag) { callback(null); return; }
+    if (!cpTag) { debugLog("L2 cpTag not found, abort"); callback(null); return; }
     var left = cpTag.leftSide || cpTag.attackSide || {};
     var right = cpTag.rightSide || cpTag.defenseSide || {};
+    debugLog("L2 cpTag found, left:" + (left.name || "?") + " right:" + (right.name || "?"));
     var userMsg = ["\u8bf7\u521b\u4f5c\u4ee5\u4e0b\u540c\u4eba\u6587\u7684\u5b8c\u6574\u5185\u5bb9\uff1a", "",
       "- \u6807\u9898\uff1a" + summary.title, "- CP\uff1a" + (summary.cp || summary.cpTagName || ""),
       "- \u5708\u5b50\uff1a" + (summary.fandomTag || ""), "- \u8bbe\u5b9a/\u6897\uff1a" + (summary.tags ? summary.tags.join(", ") : (summary.tropeTags ? summary.tropeTags.join(", ") : "\u65e0")),
@@ -357,46 +368,70 @@
     if (state.settings.autoGenerateComments) {
       systemPrompt += "\n\n" + PROMPTS.layer3Comments;
     }
+    debugLog("L2 sysPrompt len:" + systemPrompt.length + " userMsg len:" + userMsg.length + " autoComments:" + state.settings.autoGenerateComments);
 
     var doChat = function(memText) {
+      debugLog("L2 calling aiChatStream, memLen:" + (memText ? memText.length : 0));
       aiChatStream([
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
-      ], 0.8, null, function(raw) {
-        try {
-          var jsonStr = stripXmlAndExtractJson(raw);
-          var data = jsonStr ? JSON.parse(jsonStr) : null;
-          if (data && data.continuation_summary) {
-            summary.continuationSummary = data.continuation_summary;
-          }
-          callback(data);
-        } catch(e) { debugLog("L2 parse error:" + e.message); callback(null); }
-      }, function() { callback(null); });
+      ], 0.8,
+        function(progress) { debugLog("L2 streaming... len:" + progress.length); },
+        function(raw) {
+          debugLog("L2 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
+          try {
+            var jsonStr = stripXmlAndExtractJson(raw);
+            if (!jsonStr) { debugLog("L2 no JSON found"); callback(null); return; }
+            var data = JSON.parse(jsonStr);
+            debugLog("L2 parsed OK, hasContent:" + !!(data.content || data.text) + " hasContSummary:" + !!data.continuation_summary);
+            if (data && data.continuation_summary) {
+              summary.continuationSummary = data.continuation_summary;
+            }
+            callback(data);
+          } catch(e) { debugLog("L2 parse error:" + e.message + " raw500:" + raw.substring(0, 500)); callback(null); }
+        },
+        function(e) { debugLog("L2 stream error:" + (e && e.message ? e.message : String(e))); callback(null); }
+      );
     };
     var attachMem = shouldAttachMemory();
     var mountedIds = state.settings.mountedConversationIds || [];
-    if (attachMem && mountedIds.length > 0) { loadMountedMemories(function(mt) { doChat(mt.substring(0, 3000)); }); } else { doChat(""); }
+    debugLog("L2 attachMem:" + attachMem + " mountedIds:" + JSON.stringify(mountedIds));
+    if (attachMem && mountedIds.length > 0) { debugLog("L2 loading memories..."); loadMountedMemories(function(mt) { debugLog("L2 memories loaded, len:" + mt.length); doChat(mt.substring(0, 3000)); }); } else { debugLog("L2 skipping memory"); doChat(""); }
+    } catch(e) { debugLog("L2 FATAL:" + e.message + " stack:" + (e.stack || "").substring(0, 300)); callback(null); }
   }
 
   function generateLayer3Comments(fullText, callback) {
+    try {
+    debugLog("L3 start, fullText len:" + fullText.length);
     aiChatStream([
       { role: "system", content: PROMPTS.layer3Comments },
       { role: "user", content: "\u4ee5\u4e0b\u662f\u540c\u4eba\u6587\u5185\u5bb9\uff0c\u8bf7\u751f\u6210\u8bc4\u8bba\uff1a\n\n" + fullText.substring(0, 3000) }
-    ], 0.75, null, function(raw) {
-      try {
-        var jsonStr = stripXmlAndExtractJson(raw);
-        var data = jsonStr ? JSON.parse(jsonStr) : {};
-        callback(data.comments || [], data.annotations || []);
-      } catch(e) { callback([], []); }
-    }, function() { callback([], []); });
+    ], 0.75,
+      function(progress) { debugLog("L3 streaming... len:" + progress.length); },
+      function(raw) {
+        debugLog("L3 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
+        try {
+          var jsonStr = stripXmlAndExtractJson(raw);
+          if (!jsonStr) { debugLog("L3 no JSON found"); callback([], []); return; }
+          var data = JSON.parse(jsonStr);
+          debugLog("L3 parsed OK, comments:" + (data.comments || []).length + " annotations:" + (data.annotations || []).length);
+          callback(data.comments || [], data.annotations || []);
+        } catch(e) { debugLog("L3 parse error:" + e.message + " raw500:" + raw.substring(0, 500)); callback([], []); }
+      },
+      function(e) { debugLog("L3 stream error:" + (e && e.message ? e.message : String(e))); callback([], []); }
+    );
+    } catch(e) { debugLog("L3 FATAL:" + e.message); callback([], []); }
   }
 
   function generateContinuation(summary, previousContent, previousSummary, callback) {
+    try {
+    debugLog("Cont start, title:" + (summary.title || "?"));
     var cpTag = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === summary.cpTagId) { cpTag = state.cpTags[i]; break; } }
-    if (!cpTag) { callback(null); return; }
+    if (!cpTag) { debugLog("Cont cpTag not found, abort"); callback(null); return; }
     var left = cpTag.leftSide || cpTag.attackSide || {};
     var right = cpTag.rightSide || cpTag.defenseSide || {};
+    debugLog("Cont cpTag found, left:" + (left.name || "?") + " right:" + (right.name || "?"));
     var wordCountMin = state.settings.wordCountMin || 3000;
     var wordCountMax = state.settings.wordCountMax || 8000;
     var wordCountStr = wordCountMin + "-" + wordCountMax + "\u5b57";
@@ -413,24 +448,38 @@
     if (cpTag.fandomTags && cpTag.fandomTags.length > 0) {
       userMsg += "\n\n\u2501\u2501 \u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a \u2501\u2501\n" + cpTag.fandomTags.join("\u3001");
     }
+    debugLog("Cont sysPrompt len:" + systemPrompt.length + " userMsg len:" + userMsg.length);
 
     var doChat = function(memText) {
+      debugLog("Cont calling aiChatStream, memLen:" + (memText ? memText.length : 0));
       aiChatStream([
         { role: "system", content: systemPrompt },
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
-      ], 0.8, null, function(raw) {
-        try {
-          var jsonStr = stripXmlAndExtractJson(raw);
-          callback(jsonStr ? JSON.parse(jsonStr) : null);
-        } catch(e) { callback(null); }
-      }, function() { callback(null); });
+      ], 0.8,
+        function(progress) { debugLog("Cont streaming... len:" + progress.length); },
+        function(raw) {
+          debugLog("Cont stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
+          try {
+            var jsonStr = stripXmlAndExtractJson(raw);
+            if (!jsonStr) { debugLog("Cont no JSON found"); callback(null); return; }
+            var data = JSON.parse(jsonStr);
+            debugLog("Cont parsed OK, hasContent:" + !!(data.content || data.text));
+            callback(data);
+          } catch(e) { debugLog("Cont parse error:" + e.message + " raw500:" + raw.substring(0, 500)); callback(null); }
+        },
+        function(e) { debugLog("Cont stream error:" + (e && e.message ? e.message : String(e))); callback(null); }
+      );
     };
     var attachMem = shouldAttachMemory();
     var mountedIds = state.settings.mountedConversationIds || [];
-    if (attachMem && mountedIds.length > 0) { loadMountedMemories(function(mt) { doChat(mt.substring(0, 3000)); }); } else { doChat(""); }
+    debugLog("Cont attachMem:" + attachMem + " mountedIds:" + JSON.stringify(mountedIds));
+    if (attachMem && mountedIds.length > 0) { debugLog("Cont loading memories..."); loadMountedMemories(function(mt) { debugLog("Cont memories loaded, len:" + mt.length); doChat(mt.substring(0, 3000)); }); } else { debugLog("Cont skipping memory"); doChat(""); }
+    } catch(e) { debugLog("Cont FATAL:" + e.message + " stack:" + (e.stack || "").substring(0, 300)); callback(null); }
   }
 
   function generateExploreTags(callback) {
+    try {
+    debugLog("Explore start, tropeTags:" + state.tropeTags.length + " cpTags:" + state.cpTags.length + " fandomTags:" + state.fandomTags.length);
     var existingNames = [];
     for (var i = 0; i < state.tropeTags.length; i++) existingNames.push(state.tropeTags[i].name);
     for (var j = 0; j < state.cpTags.length; j++) existingNames.push(state.cpTags[j].name);
@@ -446,15 +495,25 @@
       cpInspiration = "\n\n\u7528\u6237\u5173\u6ce8\u7684CP\uff08\u53ef\u4f5c\u4e3a\u7075\u611f\u53c2\u8003\uff09\uff1a" + cpNames.join("\u3001");
     }
     var excludeList = existingNames.length > 0 ? "\n\n\u7528\u6237\u5df2\u6709\u6807\u7b7e\uff08\u7edd\u5bf9\u4e0d\u53ef\u91cd\u590d\uff09\uff1a" + existingNames.join("\u3001") : "";
+    debugLog("Explore calling aiChatStream, excludeCount:" + existingNames.length);
     aiChatStream([
       { role: "system", content: PROMPTS.exploreTags },
       { role: "user", content: "\u8bf7\u751f\u6210\u540c\u4eba\u6807\u7b7e\u4f9b\u7528\u6237\u63a2\u7d22\u3002" + excludeList + cpInspiration }
-    ], 0.9, null, function(raw) {
-      try {
-        var jsonStr = stripXmlAndExtractJson(raw);
-        callback(jsonStr ? (JSON.parse(jsonStr).tags || []) : []);
-      } catch(e) { callback([]); }
-    }, function() { callback([]); });
+    ], 0.9,
+      function(progress) { debugLog("Explore streaming... len:" + progress.length); },
+      function(raw) {
+        debugLog("Explore stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
+        try {
+          var jsonStr = stripXmlAndExtractJson(raw);
+          if (!jsonStr) { debugLog("Explore no JSON found"); callback([]); return; }
+          var data = JSON.parse(jsonStr);
+          debugLog("Explore parsed OK, tags:" + (data.tags || []).length);
+          callback(data.tags || []);
+        } catch(e) { debugLog("Explore parse error:" + e.message + " raw500:" + raw.substring(0, 500)); callback([]); }
+      },
+      function(e) { debugLog("Explore stream error:" + (e && e.message ? e.message : String(e))); callback([]); }
+    );
+    } catch(e) { debugLog("Explore FATAL:" + e.message); callback([]); }
   }
 
   /* ─── CSS 样式 ─── */
@@ -1611,6 +1670,8 @@
     },
     closeApp: function() { if (state.roche && state.roche.ui) state.roche.ui.closeApp(); },
     toggleDebug: function() { toggleDebugPanel(); },
+    clearDebug: function() { debugLogs = []; var p = document.getElementById("hp-debug-content"); if (p) p.textContent = ""; debugLog("debug cleared"); },
+    copyDebug: function() { var text = debugLogs.join("\n"); if (navigator.clipboard) { navigator.clipboard.writeText(text).then(function() { debugLog("debug copied to clipboard"); }); } else { debugLog("clipboard API not available"); } },
     loadExploreTags: function() {
       showLoading();
       generateExploreTags(function(tags) {
@@ -1663,7 +1724,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.2.1",
+    version: "1.2.2",
     apps: [
       {
         id: "hofter-home",
