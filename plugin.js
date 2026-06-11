@@ -260,7 +260,8 @@
         }).catch(function(e) { debugLog("L1 chat catch:" + (e&&e.message?e.message:String(e))); callback(null); });
       } catch(e) { debugLog("L1 sync error:" + e.message); callback(null); }
     };
-    if (shouldAttachMemory()) loadMountedMemories(function(mt) { doChat(mt); }); else doChat("");
+    debugLog("L1 shouldAttach:" + shouldAttachMemory() + " mountedIds:" + JSON.stringify(state.settings.mountedConversationIds || []));
+    if (shouldAttachMemory() && (state.settings.mountedConversationIds || []).length > 0) { debugLog("L1 loading memories..."); loadMountedMemories(function(mt) { debugLog("L1 memories loaded, len:" + mt.length); doChat(mt); }); } else { debugLog("L1 skipping memory, calling doChat directly"); doChat(""); }
   }
 
   function generateLayer2Full(summary, callback) {
@@ -1600,7 +1601,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.1.2",
+    version: "1.1.3",
     apps: [
       {
         id: "hofter-home",
