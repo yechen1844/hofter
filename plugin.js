@@ -88,6 +88,7 @@
     activePersona: null,
     currentTagPage: null,
     exploreTagsCache: [],
+    currentReadingSummary: null,
     fontSize: 17,
     styleEl: null,
     eventListeners: []
@@ -433,13 +434,20 @@
       '.' + ROOT_CLASS + ' .hp-content{max-width:960px;margin-left:auto;margin-right:auto}' +
       '.' + ROOT_CLASS + ' .hp-nav{max-width:960px;left:50%;transform:translateX(-50%);border-radius:var(--radius-lg) var(--radius-lg) 0 0}' +
       '.' + ROOT_CLASS + ' .hp-profile-grid{grid-template-columns:1fr 1fr 1fr 1fr;max-width:720px;margin:0 auto}' +
+      '.' + ROOT_CLASS + ' .hp-profile-header{padding:32px 24px}' +
+      '.' + ROOT_CLASS + ' .hp-profile-avatar{width:80px;height:80px;font-size:36px}' +
       '.' + ROOT_CLASS + ' .hp-select-grid{grid-template-columns:1fr 1fr 1fr;max-width:600px;margin:0 auto}' +
       '.' + ROOT_CLASS + ' .hp-explore-wrap{max-width:720px;margin:0 auto}' +
+      '.' + ROOT_CLASS + ' .hp-empty{padding:80px 20px}' +
+      '.' + ROOT_CLASS + ' .hp-empty svg{width:56px;height:56px}' +
+      '.' + ROOT_CLASS + ' .hp-empty p{font-size:15px}' +
+      '.' + ROOT_CLASS + ' .hp-list-item{padding:14px 20px}' +
     '}' +
     '@media(min-width:1024px){' +
       '.' + ROOT_CLASS + ' .hp-card-grid{grid-template-columns:1fr 1fr 1fr 1fr;max-width:960px}' +
       '.' + ROOT_CLASS + ' .hp-content{max-width:1200px}' +
       '.' + ROOT_CLASS + ' .hp-nav{max-width:1200px}' +
+      '.' + ROOT_CLASS + ' .hp-profile-grid{grid-template-columns:1fr 1fr 1fr 1fr 1fr;max-width:960px}' +
     '}';
   }
 
@@ -620,7 +628,9 @@
     tabs.innerHTML = '<div class="hp-tab ' + (state.collectionTab==="favorites"?"active":"") + '" onclick="window.__hofter.switchCollectionTab(\'favorites\')">\u6536\u85cf</div><div class="hp-tab ' + (state.collectionTab==="history"?"active":"") + '" onclick="window.__hofter.switchCollectionTab(\'history\')">\u5386\u53f2</div><div class="hp-tab ' + (state.collectionTab==="later"?"active":"") + '" onclick="window.__hofter.switchCollectionTab(\'later\')">\u7a0d\u540e\u8bfb</div>';
     container.appendChild(tabs);
     var data = state.collectionTab === "favorites" ? state.favorites : state.collectionTab === "history" ? state.readHistory : state.readLater;
-    if (data.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.bookmark + '<p>\u6682\u65e0\u5185\u5bb9</p></div>'; return; }
+    var emptyIcon = state.collectionTab === "favorites" ? ICONS.bookmark : state.collectionTab === "history" ? ICONS.clock : ICONS.star;
+    var emptyText = state.collectionTab === "favorites" ? "\u8fd8\u6ca1\u6709\u6536\u85cf\uff0c\u53bb\u53d1\u73b0\u559c\u6b22\u7684\u540c\u4eba\u6587\u5427" : state.collectionTab === "history" ? "\u8fd8\u6ca1\u6709\u9605\u8bfb\u8bb0\u5f55" : "\u8fd8\u6ca1\u6709\u7a0d\u540e\u8bfb\u5185\u5bb9";
+    if (data.length === 0) { container.innerHTML += '<div class="hp-empty">' + emptyIcon + '<p>' + emptyText + '</p></div>'; return; }
     var grid = document.createElement("div"); grid.className = "hp-card-grid";
     for (var i = 0; i < data.length; i++) { var item = data[i]; if (item && item.title) grid.appendChild(createSummaryCard(item)); }
     container.appendChild(grid);
@@ -631,7 +641,7 @@
     var persona = state.activePersona;
     var dName = persona ? (persona.handle || persona.name || "\u672a\u77e5") : "\u672a\u77e5";
     var dAvatar = persona && persona.avatar ? '<img src="' + persona.avatar + '">' : dName[0];
-    container.innerHTML = '<div class="hp-profile-header"><div class="hp-profile-avatar" onclick="window.__hofter.showPersonaSwitcher()">' + dAvatar + '</div><div class="hp-profile-name">' + escapeHtml(dName) + '</div><div class="hp-profile-stats"><span><strong>' + state.publishedWorks.length + '</strong>\u53d1\u5e03</span><span><strong>' + state.favorites.length + '</strong>\u6536\u85cf</span><span><strong>' + randomInt(100,9999) + '</strong>\u83b7\u8d5e</span></div></div>';
+    container.innerHTML = '<div class="hp-profile-header"><div class="hp-profile-avatar" onclick="window.__hofter.showPersonaSwitcher()">' + dAvatar + '</div><div class="hp-profile-name">' + escapeHtml(dName) + '</div><div class="hp-profile-stats"><span><strong>' + state.publishedWorks.length + '</strong>\u53d1\u5e03</span><span><strong>' + state.favorites.length + '</strong>\u6536\u85cf</span><span><strong>' + state.readLater.length + '</strong>\u7a0d\u540e\u8bfb</span></div></div>';
     var tabs = document.createElement("div"); tabs.className = "hp-tabs";
     tabs.innerHTML = '<div class="hp-tab ' + (state.profileTab==="works"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'works\')">\u4f5c\u54c1</div><div class="hp-tab ' + (state.profileTab==="fav"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'fav\')">\u6536\u85cf</div><div class="hp-tab ' + (state.profileTab==="col"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'col\')">\u5408\u96c6</div>';
     container.appendChild(tabs);
@@ -922,12 +932,18 @@
       }
     } else if (state.messageTab === "comment") {
       var works = state.publishedWorks;
+      if (works.length === 0) {
+        container.innerHTML = '<div class="hp-empty">' + ICONS.comment + '<p>\u53d1\u5e03\u4f5c\u54c1\u540e\u624d\u4f1a\u6536\u5230\u8bc4\u8bba\u901a\u77e5\u54e6</p></div>'; return;
+      }
       for (var j = 0; j < Math.min(works.length, 8); j++) {
         items.push({name: randomAuthorName(), text: "\u8bc4\u8bba\u4e86\u4f60\u7684\u300a" + (works[j].title||"\u4f5c\u54c1") + "\u300b\uff1a\u597d\u559c\u6b22\u8fd9\u7bc7\uff01", time: randomInt(1,48)+"\u5c0f\u65f6\u524d"});
       }
     } else {
-      for (var k = 0; k < 6; k++) {
-        items.push({name: randomAuthorName(), text: "\u8d5e\u4e86\u4f60\u7684\u4f5c\u54c1", time: randomInt(1,72)+"\u5c0f\u65f6\u524d"});
+      if (state.publishedWorks.length === 0) {
+        container.innerHTML = '<div class="hp-empty">' + ICONS.heart + '<p>\u53d1\u5e03\u4f5c\u54c1\u540e\u624d\u4f1a\u6536\u5230\u8d5e\u901a\u77e5\u54e6</p></div>'; return;
+      }
+      for (var k = 0; k < Math.min(state.publishedWorks.length, 6); k++) {
+        items.push({name: randomAuthorName(), text: "\u8d5e\u4e86\u4f60\u7684\u300a" + (state.publishedWorks[k].title||"\u4f5c\u54c1") + "\u300b", time: randomInt(1,72)+"\u5c0f\u65f6\u524d"});
       }
     }
     if (items.length === 0) { container.innerHTML = '<div class="hp-empty">' + ICONS.bell + '<p>\u6682\u65e0\u6d88\u606f</p></div>'; return; }
@@ -948,6 +964,7 @@
       for (var j = 0; j < state.summaries.length; j++) { if (state.summaries[j].id === summaryId) { summary = state.summaries[j]; break; } }
     }
     if (!summary) { showToast("\u672a\u627e\u5230\u4f5c\u54c1"); return; }
+    state.currentReadingSummary = summary;
     var readerEl = document.createElement("div"); readerEl.className = "hp-reader-page"; readerEl.id = "hp-reader";
     readerEl.innerHTML = '<div class="hp-reader-header"><div class="hp-icon-btn" onclick="window.__hofter.closeReader()">' + ICONS.back + '</div><div style="flex:1;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(summary.title) + '</div><div class="hp-icon-btn" onclick="window.__hofter.showReaderSettings()">' + ICONS.textSize + '</div></div><div id="hp-reader-content" style="padding-bottom:60px"><div style="text-align:center;padding:40px 20px;color:var(--text-hint)"><div class="hp-spinner" style="margin:0 auto"></div><p style="margin-top:12px">\u6b63\u5728\u52a0\u8f7d\u5185\u5bb9...</p></div></div>';
     state.containerEl.appendChild(readerEl);
@@ -1239,10 +1256,33 @@
       else { el.classList.add("liked"); el.style.color = "var(--like-red)"; }
     },
     toggleCollect: function() {
-      var isInFav = false;
-      if (isInFav) showToast("\u5df2\u53d6\u6d88\u6536\u85cf"); else showToast("\u5df2\u6536\u85cf");
+      var summary = state.currentReadingSummary;
+      if (!summary) { showToast("\u65e0\u6cd5\u6536\u85cf"); return; }
+      var idx = -1;
+      for (var i = 0; i < state.favorites.length; i++) { if (state.favorites[i].id === summary.id) { idx = i; break; } }
+      if (idx >= 0) {
+        state.favorites.splice(idx, 1);
+        showToast("\u5df2\u53d6\u6d88\u6536\u85cf");
+      } else {
+        state.favorites.unshift({id:summary.id, title:summary.title, author:summary.author, cpTagName:summary.cpTagName, excerpt:summary.excerpt, coverGradient:summary.coverGradient, likes:summary.likes, comments:summary.comments, words:summary.words, timeAgo:summary.timeAgo});
+        showToast("\u5df2\u6536\u85cf");
+      }
+      saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
     },
-    toggleReaderBookmark: function() { showToast("\u5df2\u52a0\u5165\u7a0d\u540e\u8bfb"); },
+    toggleReaderBookmark: function() {
+      var summary = state.currentReadingSummary;
+      if (!summary) { showToast("\u65e0\u6cd5\u64cd\u4f5c"); return; }
+      var idx = -1;
+      for (var i = 0; i < state.readLater.length; i++) { if (state.readLater[i].id === summary.id) { idx = i; break; } }
+      if (idx >= 0) {
+        state.readLater.splice(idx, 1);
+        showToast("\u5df2\u53d6\u6d88\u7a0d\u540e\u8bfb");
+      } else {
+        state.readLater.unshift({id:summary.id, title:summary.title, author:summary.author, cpTagName:summary.cpTagName, excerpt:summary.excerpt, coverGradient:summary.coverGradient, likes:summary.likes, comments:summary.comments, words:summary.words, timeAgo:summary.timeAgo});
+        showToast("\u5df2\u52a0\u5165\u7a0d\u540e\u8bfb");
+      }
+      saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
+    },
     showCommentInput: function() { var input = document.getElementById("hp-comment-input"); if (input) input.focus(); },
     submitComment: function() { var input = document.getElementById("hp-comment-input"); if (input && input.value.trim()) { showToast("\u8bc4\u8bba\u53d1\u5e03\u6210\u529f"); input.value = ""; } },
     reportComment: function(el) { if (el) el.textContent = "\u5df2\u4e3e\u62a5"; el.style.color = "var(--text-hint)"; showToast("\u5df2\u4e3e\u62a5\uff0c\u611f\u8c22\u53cd\u9988"); },
