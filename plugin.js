@@ -206,9 +206,21 @@
         { role: "system", content: systemPrompt },
         { role: "user", content: ctx.join("\n") + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
       ], temperature: 0.85 }).then(function(result) {
-        try { var m = (result.text || result || "").match(/\{[\s\S]*\}/); callback(m ? JSON.parse(m[0]).summaries || [] : null); }
+        try {
+          var raw = "";
+          if (result && typeof result === "string") raw = result;
+          else if (result && result.text) raw = result.text;
+          else if (result && result.content) raw = result.content;
+          else raw = String(result || "");
+          var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "").replace(/<core_philosophy>[\s\S]*?<\/core_philosophy>/gi, "").replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "").replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "");
+          var m = stripped.match(/\{[\s\S]*\}/);
+          if (!m) { callback(null); return; }
+          var jsonStr = m[0];
+          var parsed = JSON.parse(jsonStr);
+          callback(parsed.summaries || parsed.results || null);
+        }
         catch(e) { callback(null); }
-      }).catch(function() { callback(null); });
+      }).catch(function(e) { callback(null); });
     };
     if (shouldAttachMemory()) loadMountedMemories(function(mt) { doChat(mt); }); else doChat("");
   }
@@ -242,7 +254,9 @@
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
       ], temperature: 0.8 }).then(function(result) {
         try {
-          var m = (result.text || result || "").match(/\{[\s\S]*\}/);
+          var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
+          var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<[^>]+>/g, "");
+          var m = stripped.match(/\{[\s\S]*\}/);
           var data = m ? JSON.parse(m[0]) : null;
           if (data && data.continuation_summary) {
             summary.continuationSummary = data.continuation_summary;
@@ -261,7 +275,9 @@
       { role: "user", content: "\u4ee5\u4e0b\u662f\u540c\u4eba\u6587\u5185\u5bb9\uff0c\u8bf7\u751f\u6210\u8bc4\u8bba\uff1a\n\n" + fullText.substring(0, 3000) }
     ], temperature: 0.75 }).then(function(result) {
       try {
-        var m = (result.text || result || "").match(/\{[\s\S]*\}/);
+        var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
+        var stripped = raw.replace(/<[^>]+>/g, "");
+        var m = stripped.match(/\{[\s\S]*\}/);
         var data = m ? JSON.parse(m[0]) : {};
         var comments = data.comments || [];
         var annotations = data.annotations || [];
@@ -298,7 +314,9 @@
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
       ], temperature: 0.8 }).then(function(result) {
         try {
-          var m = (result.text || result || "").match(/\{[\s\S]*\}/);
+          var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
+          var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<[^>]+>/g, "");
+          var m = stripped.match(/\{[\s\S]*\}/);
           var data = m ? JSON.parse(m[0]) : null;
           callback(data);
         }
@@ -328,7 +346,12 @@
       { role: "system", content: PROMPTS.exploreTags },
       { role: "user", content: "\u8bf7\u751f\u6210\u540c\u4eba\u6807\u7b7e\u4f9b\u7528\u6237\u63a2\u7d22\u3002" + excludeList + cpInspiration }
     ], temperature: 0.9 }).then(function(result) {
-      try { var m = (result.text || result || "").match(/\{[\s\S]*\}/); callback(m ? (JSON.parse(m[0]).tags || []) : []); }
+      try {
+        var raw = (result && typeof result === "string") ? result : (result && result.text) ? result.text : String(result || "");
+        var stripped = raw.replace(/<[^>]+>/g, "");
+        var m = stripped.match(/\{[\s\S]*\}/);
+        callback(m ? (JSON.parse(m[0]).tags || []) : []);
+      }
       catch(e) { callback([]); }
     }).catch(function() { callback([]); });
   }
