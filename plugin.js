@@ -126,6 +126,30 @@
     return g[randomInt(0, g.length - 1)];
   }
   function showToast(msg) { if (state.roche && state.roche.ui) state.roche.ui.toast(msg); }
+  /* ─── 调试面板 ─── */
+  var debugLogs = [];
+  var debugPanelVisible = false;
+  function debugLog(msg) {
+    debugLogs.push("[" + new Date().toLocaleTimeString() + "] " + msg);
+    if (debugLogs.length > 50) debugLogs.shift();
+    if (debugPanelVisible) {
+      var panel = document.getElementById("hp-debug-panel");
+      if (panel) { panel.textContent = debugLogs.join("\n"); panel.scrollTop = panel.scrollHeight; }
+    }
+  }
+  function toggleDebugPanel() {
+    debugPanelVisible = !debugPanelVisible;
+    var existing = document.getElementById("hp-debug-panel");
+    if (existing) { existing.remove(); debugPanelVisible = false; return; }
+    if (!debugPanelVisible) return;
+    var panel = document.createElement("pre");
+    panel.id = "hp-debug-panel";
+    panel.style.cssText = "position:fixed;bottom:70px;left:4px;right:4px;max-height:40vh;background:rgba(0,0,0,0.88);color:#0f0;font-size:11px;font-family:monospace;padding:8px;overflow-y:auto;z-index:9999;border-radius:8px;white-space:pre-wrap;word-break:break-all;margin:0;";
+    panel.textContent = debugLogs.join("\n");
+    panel.scrollTop = panel.scrollHeight;
+    state.containerEl.appendChild(panel);
+  }
+
   function showLoading() {
     state.isLoading = true;
     var el = document.getElementById("hp-loading");
@@ -168,6 +192,7 @@
 
   /* ─── AI 调用层 ─── */
   function generateLayer1Summaries(lockTag, callback) {
+    debugLog("L1 start, cpTags:" + state.cpTags.length + " tropeTags:" + state.tropeTags.length);
     var cpTags = state.cpTags;
     if (cpTags.length > 5) {
       var shuffled = cpTags.slice();
@@ -212,17 +237,17 @@
           else if (result && result.text) raw = result.text;
           else if (result && result.content) raw = result.content;
           else raw = String(result || "");
-          console.log("[hofter] L1 raw length:", raw.length, "first200:", raw.substring(0, 200));
+          debugLog("L1 raw len:" + raw.length + " first100:" + raw.substring(0, 100));
           var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "").replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "").replace(/<core_philosophy>[\s\S]*?<\/core_philosophy>/gi, "").replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "").replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "").replace(/<inline_check_system>[\s\S]*?<\/inline_check_system>/gi, "");
           var m = stripped.match(/\{[\s\S]*\}/);
-          if (!m) { console.log("[hofter] L1 no JSON found, stripped first500:", stripped.substring(0, 500)); callback(null); return; }
+          if (!m) { debugLog("L1 no JSON found, stripped:" + stripped.substring(0, 300)); callback(null); return; }
           var jsonStr = m[0];
           var parsed = JSON.parse(jsonStr);
-          console.log("[hofter] L1 parsed, summaries count:", (parsed.summaries || []).length);
+          debugLog("L1 parsed OK, count:" + (parsed.summaries || []).length);
           callback(parsed.summaries || parsed.results || null);
         }
-        catch(e) { console.log("[hofter] L1 parse error:", e.message); callback(null); }
-      }).catch(function(e) { console.log("[hofter] L1 chat error:", e); callback(null); });
+        catch(e) { debugLog("L1 parse error:" + e.message); callback(null); }
+      }).catch(function(e) { debugLog("L1 chat error:" + (e&&e.message?e.message:String(e))); callback(null); });
     };
     if (shouldAttachMemory()) loadMountedMemories(function(mt) { doChat(mt); }); else doChat("");
   }
@@ -609,7 +634,7 @@
 
   function renderHeaderContent(header) {
     var left = '<div class="hp-header-left"></div>', title = "", right = "";
-    if (state.currentPage === "home") { title = "hofter"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div><div class="hp-icon-btn" onclick="window.__hofter.closeApp()">' + ICONS.close + '</div>'; }
+    if (state.currentPage === "home") { title = '<span ondblclick="window.__hofter.toggleDebug()">hofter</span>'; right = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div><div class="hp-icon-btn" onclick="window.__hofter.closeApp()">' + ICONS.close + '</div>'; }
     else if (state.currentPage === "discover") { title = "\u53d1\u73b0"; }
     else if (state.currentPage === "collection") { title = "\u6536\u85cf"; }
     else if (state.currentPage === "profile") { title = "\u6211\u7684"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showSettings()">' + ICONS.settings + '</div>'; }
@@ -870,7 +895,7 @@
   }
 
   function doRefresh() {
-    if (state.isLoading) return; showLoading();
+    if (state.isLoading) return; debugLog("doRefresh start"); showLoading();
     var lockTag = state.currentTagPage || null;
     var timeout = setTimeout(function() { hideLoading(); showToast("\u751f\u6210\u8d85\u65f6\uff0c\u8bf7\u91cd\u8bd5"); }, 120000);
     generateLayer1Summaries(lockTag, function(summaries) {
@@ -1510,6 +1535,7 @@
       saveCpTags(state.cpTags); showToast("CP\u6807\u7b7e\u5df2\u521b\u5efa"); showTagManager();
     },
     closeApp: function() { if (state.roche && state.roche.ui) state.roche.ui.closeApp(); },
+    toggleDebug: function() { toggleDebugPanel(); },
     loadExploreTags: function() {
       showLoading();
       generateExploreTags(function(tags) {
