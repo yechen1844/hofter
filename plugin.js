@@ -176,13 +176,18 @@
   function loadMountedMemories(cb) {
     var ids = state.settings.mountedConversationIds || [];
     if (ids.length === 0) { cb(""); return; }
+    var MAX_FACTS = 5;
     var parts = [], done = 0;
     for (var i = 0; i < ids.length; i++) {
       (function(cid) {
         state.roche.memory.getLongTerm({ conversationId: cid, limit: 50 }).then(function(lt) {
           var coreText = (lt.core && lt.core.summary) || "";
-          var factText = (lt.facts || []).map(function(f) { return f.summaryText || f.action || f.text || ""; }).filter(Boolean).join("\n");
+          var allFacts = (lt.facts || []).map(function(f) { return f.summaryText || f.action || f.text || ""; }).filter(Boolean);
+          var shuffled = allFacts.sort(function() { return Math.random() - 0.5; });
+          var pickedFacts = shuffled.slice(0, MAX_FACTS);
+          var factText = pickedFacts.join("\n");
           var combined = [coreText, factText].filter(Boolean).join("\n");
+          debugLog("mem cid:" + cid + " core:" + (coreText ? "Y" : "N") + " facts:" + allFacts.length + "->" + pickedFacts.length);
           if (combined) parts.push(combined);
           done++; if (done === ids.length) cb(parts.join("\n\n"));
         }).catch(function() { done++; if (done === ids.length) cb(parts.join("\n\n")); });
@@ -1658,7 +1663,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.2.0",
+    version: "1.2.1",
     apps: [
       {
         id: "hofter-home",
