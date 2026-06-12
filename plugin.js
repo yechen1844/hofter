@@ -448,7 +448,7 @@
     wrapper.style.cssText = "position:fixed;bottom:60px;left:4px;right:4px;max-height:45vh;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:0;overflow:hidden;z-index:99999;border-radius:10px;display:flex;flex-direction:column;";
     var toolbar = document.createElement("div");
     toolbar.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.5);color:#0f0;font-size:11px;flex-shrink:0;";
-    toolbar.innerHTML = '<span>hofter debug (v1.6.0)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
+    toolbar.innerHTML = '<span>hofter debug (v1.6.1)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
     var content = document.createElement("pre");
     content.id = "hp-debug-content";
     content.style.cssText = "flex:1;overflow-y:auto;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;color:#0f0;";
@@ -476,7 +476,20 @@
   function saveCpTags(t) { state.cpTags = t; if (state.roche && state.roche.storage) state.roche.storage.set("cpTags", t); }
   function saveTropeTags(t) { state.tropeTags = t; if (state.roche && state.roche.storage) state.roche.storage.set("tropeTags", t); }
   function saveFandomTags(t) { state.fandomTags = t; if (state.roche && state.roche.storage) state.roche.storage.set("fandomTags", t); }
-  function saveSummariesCache(a) { state.summaries = a; if (state.roche && state.roche.storage) state.roche.storage.set("summaries_cache", a); }
+  function saveSummariesCache(a) {
+    state.summaries = a;
+    if (state.summaries.length > 100) {
+      var withContent = [];
+      var withoutContent = [];
+      for (var i = 0; i < state.summaries.length; i++) {
+        if (state.summaries[i].fullContent) withContent.push(state.summaries[i]);
+        else withoutContent.push(state.summaries[i]);
+      }
+      var keep = withContent.concat(withoutContent);
+      state.summaries = keep.slice(0, 100);
+    }
+    if (state.roche && state.roche.storage) state.roche.storage.set("summaries_cache", state.summaries);
+  }
   function savePublishedWorks(a) { state.publishedWorks = a; if (state.roche && state.roche.storage) state.roche.storage.set("published_works", a); }
   function saveFavoritesData(d) { state.favorites = d.favorites || []; state.readHistory = d.readHistory || []; state.readLater = d.readLater || []; if (state.roche && state.roche.storage) state.roche.storage.set("favorites", d); }
 
@@ -702,7 +715,6 @@
         { role: "user", content: userMsg + (memText ? "\n\n\u3010\u8fd1\u671f\u4e92\u52a8\u8bb0\u5fc6\uff08\u4ec5\u4f9b\u53c2\u8003\u7d20\u6750\uff09\u3011\n" + memText : "") }
       ], 0.8,
         function(progress) {
-          debugLog("L2 streaming... len:" + progress.length);
           var spinner = document.getElementById("hp-reader-spinner");
           var streamEl = document.getElementById("hp-reader-stream");
           if (streamEl) {
@@ -713,22 +725,38 @@
             cleaned = cleaned.replace(/<inline_chain>[\s\S]*?<\/inline_chain>/gi, "");
             cleaned = cleaned.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "");
             cleaned = cleaned.replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "");
+            cleaned = cleaned.replace(/<system_execution_directive>[\s\S]*?<\/system_execution_directive>/gi, "");
             cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, "");
             cleaned = cleaned.replace(/<[^>]+>/g, "");
-            var textParts = cleaned.split(/"text"\s*:\s*"/);
             var displayHtml = "";
-            for (var pi = 1; pi < textParts.length; pi++) {
-              var textPart = textParts[pi].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
-              if (textPart.trim()) {
-                displayHtml += '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary)">' + escapeHtml(textPart.trim()) + '</div>';
+            var chapterMatch = cleaned.match(/"chapter"\s*:\s*\{[\s\S]*?"content"\s*:\s*\[([\s\S]*)/);
+            if (chapterMatch) {
+              var contentStr = chapterMatch[1];
+              var textParts = contentStr.split(/"text"\s*:\s*"/);
+              for (var pi = 1; pi < textParts.length; pi++) {
+                var textPart = textParts[pi].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
+                if (textPart.trim()) {
+                  displayHtml += '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary)">' + escapeHtml(textPart.trim()) + '</div>';
+                }
               }
             }
-            if (!displayHtml && cleaned.trim().length > 10) {
-              displayHtml = '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary);white-space:pre-wrap;opacity:0.6">' + escapeHtml(cleaned.substring(0, 500)) + '</div>';
+            if (!displayHtml && cleaned.trim().length > 20) {
+              var afterJson = cleaned.replace(/^\s*\{/, "");
+              var simpleTexts = afterJson.split(/"text"\s*:\s*"/);
+              if (simpleTexts.length > 1) {
+                for (var si = 1; si < simpleTexts.length; si++) {
+                  var st = simpleTexts[si].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
+                  if (st.trim().length > 10) {
+                    displayHtml += '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary)">' + escapeHtml(st.trim()) + '</div>';
+                  }
+                }
+              }
             }
-            streamEl.innerHTML = displayHtml;
-            var contentEl = document.getElementById("hp-reader-content");
-            if (contentEl) contentEl.scrollTop = contentEl.scrollHeight;
+            if (displayHtml) {
+              streamEl.innerHTML = displayHtml;
+              var contentEl = document.getElementById("hp-reader-content");
+              if (contentEl) contentEl.scrollTop = contentEl.scrollHeight;
+            }
           }
         },
         function(raw) {
@@ -1225,6 +1253,21 @@
       totalInfo.textContent = "\u5171 " + state.summaries.length + " \u7bc7";
       container.appendChild(totalInfo);
     } else {
+      var readSummaries = [];
+      for (var ri = 0; ri < state.summaries.length; ri++) {
+        if (state.summaries[ri].fullContent) readSummaries.push(state.summaries[ri]);
+      }
+      if (readSummaries.length === 0) {
+        container.innerHTML += '<div class="hp-empty"><p>\u8fd8\u6ca1\u6709\u9605\u8bfb\u8fc7\u7684\u4f5c\u54c1</p><p style="font-size:12px;color:var(--text-hint)">\u70b9\u51fb\u6458\u8981\u5361\u7247\u751f\u6210\u5e76\u9605\u8bfb\u6b63\u6587\u540e\uff0c\u4f1a\u81ea\u52a8\u4fdd\u5b58\u5728\u8fd9\u91cc</p></div>';
+      } else {
+        var readGrid = document.createElement("div"); readGrid.className = "hp-card-grid";
+        for (var rj = 0; rj < readSummaries.length; rj++) readGrid.appendChild(createSummaryCard(readSummaries[rj]));
+        container.appendChild(readGrid);
+        var readInfo = document.createElement("div");
+        readInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
+        readInfo.textContent = "\u5171 " + readSummaries.length + " \u7bc7\u5df2\u9605\u8bfb";
+        container.appendChild(readInfo);
+      }
       var sec = document.createElement("div");
       sec.innerHTML = '<div class="hp-section-title">\u6211\u7684CP</div>';
       var cpList = document.createElement("div"); cpList.className = "hp-tag-list";
@@ -1785,6 +1828,8 @@
           summary.isByUser = isUserWork;
           if (result.chapter && !result.chapters) { result.chapters = [result.chapter]; }
           if (!summary.fullContent.comments) summary.fullContent.comments = [];
+          saveSummariesCache(state.summaries);
+          debugLog("L2 saved fullContent, summary now has fullContent:true");
           renderReaderContent(summary);
         } else {
           showToast("\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5");
@@ -2351,7 +2396,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.6.0",
+    version: "1.6.1",
     apps: [
       {
         id: "hofter-home",
