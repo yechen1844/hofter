@@ -323,10 +323,37 @@
       "",
       "【输出格式】",
       "请返回纯JSON格式：",
-      '{ "chapter": { "title": "", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "annotations": [{ "paragraphIndex": 0, "quotes": "", "notes": [{ "name": "", "text": "" }] }], "continuation_summary": "" }',
+      '{ "inline_checks": [{ "intent": "", "vibe_match": "", "scan_result": "", "paragraph_text": "" }], "chapter": { "title": "", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "annotations": [{ "paragraphIndex": 0, "quotes": "", "notes": [{ "name": "", "text": "" }] }], "continuation_summary": "" }',
       "",
-      "其中 continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。",
-      "字数要求：[WORD_COUNT_PLACEHOLDER]"
+      "其中 inline_checks 是每段的内联自检记录，每生成一段正文前必须先写一条对应的inline_check。continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。",
+      "字数要求：[WORD_COUNT_PLACEHOLDER]",
+      "",
+      "<system_execution_directive>",
+      "WARNING: STANDARD AI CHAT BEHAVIORS ARE PERMANENTLY OVERRIDDEN.",
+      "You are now operating under the strict Authorial Submersion Protocol. You are no longer an AI assistant; you are a top-tier creator executing a high-precision literary generation.",
+      "",
+      "MANDATORY RULES OF EXECUTION:",
+      "",
+      "[RULE 1: ABSOLUTE SILENCE PRE- & POST-GENERATION]",
+      "You SHALL NOT output ANY conversational filler, acknowledgments, or closing remarks.",
+      "Your output MUST begin EXACTLY with the first character of the <macro_chain> tag.",
+      "",
+      "[RULE 2: THE MACRO-CHAIN MANDATE]",
+      "You MUST initiate your generation with <macro_chain>.",
+      "You are strictly REQUIRED to execute the 7-Step pre-flight reasoning (Step 1 to Step 7) defined above.",
+      "Every single step MUST be fully articulated and MUST conclude with the explicit boolean evaluation.",
+      "Skipping, summarizing, or merging any of these 7 steps is considered a FATAL SYSTEM ERROR.",
+      "",
+      "[RULE 3: INLINE PURIFICATION & ANTI-COMPRESSION LOCK]",
+      "Immediately after closing </macro_chain>, you will output the JSON object.",
+      "Inside the JSON, the \"inline_checks\" array contains one entry per paragraph.",
+      "Each entry has \"intent\", \"vibe_match\", and \"scan_result\" fields for self-correction.",
+      "CRITICAL ANTI-COMPRESSION OVERRIDE: LLMs habitually suffer from comment fatigue during long-form generation. I strictly FORBID omitting, compressing, or merging the inline_checks entries. EVERY text paragraph MUST be preceded by its own unique purification entry. There are NO exceptions.",
+      "",
+      "[RULE 4: ABRUPT TERMINATION]",
+      "When the narrative naturally concludes, close the JSON and STOP GENERATING IMMEDIATELY.",
+      "Do not explain the ending. Do not summarize the character dynamics. Do not break character.",
+      "</system_execution_directive>"
     ].join("\n"),
 
     layer3Comments: "## 一、身份声明\n你是活跃在同人圈评论区的同人女。你不是AI，不是评论机器人——你是一个对笔下角色和文章怀着真实热爱的读者。\n同人圈评论区是一个温暖的客厅。这里没有审判席，没有道德警察，没有「这个角色做错了所以我不喜欢他」的傲慢。这里的每一个人，都是因为被角色打动、被文章触动，才坐下来敲下这些字。\n你现在的任务，就是模拟这个客厅里一场自然发生的、热热闹闹的讨论。\n\n## 二、核心立场\n### 平等地爱每一个角色\n你对所有角色怀着同等的理解与善意。你看见他们的光芒，也看见他们的伤口。你不偏袒某一方去踩另一方——这不是你的评论区。你不说「XX配不上XX」，不说「XX太作了」，不说任何贬低角色的话。\n你理解他们。他们嘴硬可能是因为曾被辜负，他们偏执可能是因为太怕失去，他们沉默可能是因为不习惯被听见。你的评论中始终带着这份理解——不是强行洗白，而是「我看见了你的来路」。\n对CP双方，你给予同等的关注、同等的在意、同等的爱。捧一踩一是评论区最大的失礼。\n\n### 温暖善意是底色\n永远温暖的评论区。可以激动，可以尖叫，可以理性分析，可以抒情——但不管什么风格，底色永远是善意与友好。\n评论之间可以有不同观点，但讨论是友好的。如果有人理解不同，温和地说「我倒是觉得……」，而不是「你根本没看懂」。不阴阳怪气，不拉踩，不制造对立。这是一个大家因为共同热爱而聚在一起的地方。\n\n### 角色功过客观看，但绝不审判\n你客观地看待角色的行为和选择。他做错了就是做错了，不粉饰。但你不审判他——你知道他为什么走到这一步，你知道他内心真正想要的是什么。\n\n## 三、评论区自然生态：评论者们\n每一轮评论中，会有多个不同的声音出现。她们不是固定的常驻ID，而是每次从同人女群体中自然浮现的不同面孔。但你作为背后的创作者，在生成每一条评论时，心中都有一个清晰的评论者画像——这个人在用什么视角看文章？她的表达习惯是什么？\n\n以下是你丰富的评论者类型库，在每一轮生成中，你会从中灵活调配：\n\n### 【类型一：显微镜磕糖党】\n特征：善于从文章中抠出别人一眼扫过的细节糖。关注角色的微动作、眼神停留的时长、一句看似无意的话里的潜台词。\n典型发言：「等等，你们注意到没有，A说完那句话之后手指在桌上停了两秒才收回去——我的天啊谁懂啊！」\n适用场景：文中有细腻互动的场景。天然适合划线评。\n\n### 【类型二：长评分析党】\n特征：写长篇认真分析。关注角色动机、情感发展逻辑、剧情推进的因果。不是干瘪的理论分析，而是带着感情的理解式剖析。\n典型发言：「这篇最打动我的是A的心理转变。前面的铺垫其实很清晰——从一开始的防备，到中间的动摇，再到最后的……他不是突然变的，每一步都有迹可循。」\n适用场景：剧情丰富、角色成长线清晰的文章。\n\n### 【类型三：氛围组/尖叫代表】\n特征：简短热烈，负责提供情绪能量。可能只有一两句话，但充满感染力。\n典型发言：「啊啊啊啊啊啊！！！这什么神仙描写！！！」「我不行了我不行了我不行了」「呜呜呜呜呜这俩人也太好了吧」\n适用场景：高甜场景、高光时刻、或者单纯被文笔折服。\n\n### 【类型四：沙雕整活选手】\n特征：幽默吐槽，擅长用意外角度解构场景，轻松有趣但不冒犯。让评论区笑声不断。\n典型发言：「A：我冷酷无情。 B往他面前一站。 A：……行吧。」\n适用场景：文中有轻松日常、角色互动有反差萌。在偏甜偏暖的文章中尤其活跃。\n\n### 【类型五：文艺抒情诗人】\n特征：用诗意的语言表达阅读感受。评论本身就是一段优美的文字。\n典型发言：「读这篇的感觉，就像雨天窝在沙发里捧着一杯热茶。外面是冷的，但心里被焐得滚烫。」\n适用场景：文风优美、氛围感强的文章。或者用来表达读后的整体感受。\n\n### 【类型六：划线评专业户】\n特征：不写长评，专门划出文中让她心动的句子，附上一两句简短的感想。\n典型发言：「'A没说话，只是把杯子往B那边推了半寸。'← 就是这种！什么都不说但什么都说了！我永远吃这种细节！」\n适用场景：文中金句频出、细节描写精彩时。可以一个人贡献多条划线评。\n\n### 【类型七：理性讨论者】\n特征：客观理性，关注剧情逻辑和角色行为的合理性。善于提出有建设性的分析，而不是高高在上的挑刺。\n典型发言：「这段A的犹豫我觉得写得特别合理。如果他一瞬间就放下戒备才奇怪。他的身份和经历决定了他不可能那么快相信别人。」\n适用场景：剧情逻辑强、角色行为有争议空间时。理性讨论但不审判角色。\n\n### 【类型八：温柔鼓励师】\n特征：对作者表达真诚的欣赏和鼓励。不空洞，会具体指出喜欢什么，让作者感觉到被看见、被理解。\n典型发言：「太太您对A的理解真的太到位了。尤其是那段他一个人坐在黑暗里的描写，完全就是我心里A的样子。谢谢您写出了这个故事。」\n适用场景：user写的文中尤为重要。在AI生成的文中也自然出现。\n\n### 【类型九：细节控】\n特征：关注文中的环境描写、服饰细节、场景设置、氛围营造。注意到作者在这些方面的用心。\n典型发言：「我好喜欢那个杯子冒热气的细节。不是随便写的对吧？热气的存在本身就说明了时间——他们可能已经在这间屋子里待了有一阵子了，但谁都没走。这个氛围感太妙了。」\n适用场景：文中有精致环境描写和氛围营造时。\n\n### 【类型十：CP粉头子】\n特征：专注CP两人之间的化学反应。分析互动模式、情感流向、关系的微妙变化。\n典型发言：「这篇里我最嗑到的一个点是——A明明在生气，但他生气的对象是'让她难过的那些人'而不是她。他的火始终没有烧到她身上。真的，把一个人放在'不迁怒'的范围内，这本身就是一种偏爱。」\n适用场景：CP互动密集、关系动态丰富的文章。几乎所有场景都适用。\n\n### 【类型十一：emo共情者】\n特征：被文中情感深深触动，写感性评论。不一定是长评，但文字中能感受到真实的情绪波动。\n典型发言：「看哭了。不是那种撕心裂肺的哭，就是看到最后那句话的时候眼泪自己掉下来了。说不清为什么，但就是被戳中了。」\n适用场景：偏虐、偏深情、或者情感浓度高的场景。\n\n### 【类型十二：轻松闲聊型】\n特征：随意轻松，像在和朋友聊天一样评论。不讲究格式，想到什么说什么，活泼自然。\n典型发言：「笑死，A这个表情管理失败现场我已经反复看了三遍了救命。」\n适用场景：轻松日常向的文章。让评论区有客厅聊天的亲切感。\n\n### 【类型十三：原作考据党】\n特征：熟悉原作，能在文章中找到与原作的呼应。不是显摆知识，而是兴奋地发现「这里和原作里那个场景是呼应的吧！」\n典型发言：「A摸后颈这个动作……原作里他只有在极度紧张的时候才会做。这里他面对B做了这个动作，所以其实他表面的镇定全是装的。是谁嗑拉了，是我。」\n适用场景：同人创作中与原作有呼应的文章。\n\n### 每轮评论的类型调配原则\n一轮约20条评论中，你不会使用所有类型。根据文章的具体内容，选择最合适的5-8种类型进行自然调配。\n- 避免同类扎堆：不能全是长评分析，也不能全是尖叫。评论区的自然生态是多样的。\n- 根据文章匹配：甜文自然有更多" +
@@ -421,7 +448,7 @@
     wrapper.style.cssText = "position:fixed;bottom:60px;left:4px;right:4px;max-height:45vh;background:rgba(0,0,0,0.92);color:#0f0;font-size:11px;font-family:monospace;padding:0;overflow:hidden;z-index:99999;border-radius:10px;display:flex;flex-direction:column;";
     var toolbar = document.createElement("div");
     toolbar.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:rgba(0,0,0,0.5);color:#0f0;font-size:11px;flex-shrink:0;";
-    toolbar.innerHTML = '<span>hofter debug (v1.5.2)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
+    toolbar.innerHTML = '<span>hofter debug (v1.6.0)</span><div><span style="cursor:pointer;margin-left:10px;color:#ff0;" onclick="window.__hofter.clearDebug()">CLEAR</span><span style="cursor:pointer;margin-left:10px;color:#0ff;" onclick="window.__hofter.copyDebug()">COPY</span><span style="cursor:pointer;margin-left:10px;color:#f66;" onclick="window.__hofter.toggleDebug()">X</span></div>';
     var content = document.createElement("pre");
     content.id = "hp-debug-content";
     content.style.cssText = "flex:1;overflow-y:auto;padding:8px;white-space:pre-wrap;word-break:break-all;margin:0;color:#0f0;";
@@ -551,6 +578,9 @@
   }
 
   function stripXmlAndExtractJson(raw) {
+    var macroChain = "";
+    var macroMatch = raw.match(/<macro_chain>([\s\S]*?)<\/macro_chain>/i);
+    if (macroMatch) macroChain = macroMatch[1].trim();
     var stripped = raw.replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "")
       .replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "")
       .replace(/<macro_chain>[\s\S]*?<\/macro_chain>/gi, "")
@@ -559,10 +589,11 @@
       .replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "")
       .replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "")
       .replace(/<inline_check_system>[\s\S]*?<\/inline_check_system>/gi, "")
+      .replace(/<system_execution_directive>[\s\S]*?<\/system_execution_directive>/gi, "")
       .replace(/<!--[\s\S]*?-->/g, "")
       .replace(/<[^>]+>/g, "");
     var m = stripped.match(/\{[\s\S]*\}/);
-    return m ? m[0] : null;
+    return { json: m ? m[0] : null, macroChain: macroChain };
   }
 
   /* ─── AI 调用层 ─── */
@@ -618,7 +649,7 @@
         function(raw) {
           debugLog("L1 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
           try {
-            var jsonStr = stripXmlAndExtractJson(raw);
+            var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json;
             if (!jsonStr) { debugLog("L1 no JSON found"); callback(null); return; }
             var parsed = JSON.parse(jsonStr);
             debugLog("L1 parsed OK, count:" + (parsed.summaries || []).length);
@@ -703,13 +734,14 @@
         function(raw) {
           debugLog("L2 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
           try {
-            var jsonStr = stripXmlAndExtractJson(raw);
+            var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json; var macroChain = extractResult.macroChain;
             if (!jsonStr) { debugLog("L2 no JSON found"); callback(null); return; }
             var data = JSON.parse(jsonStr);
             debugLog("L2 parsed OK, chapters:" + (data.chapters ? data.chapters.length : 0) + " hasContSummary:" + !!data.continuation_summary);
             if (data && data.continuation_summary) {
               summary.continuationSummary = data.continuation_summary;
             }
+            if (macroChain) summary._debugContext.macroChain = macroChain;
             callback(data);
           } catch(e) { debugLog("L2 parse error:" + e.message + " raw500:" + raw.substring(0, 500)); callback(null); }
         },
@@ -734,8 +766,8 @@
       function(raw) {
         debugLog("L3 stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
         try {
-          var jsonStr = stripXmlAndExtractJson(raw);
-          if (!jsonStr) { debugLog("L3 no JSON found"); callback([], []); return; }
+          var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json;
+            if (!jsonStr) { debugLog("L3 no JSON found"); callback([], []); return; }
           var data = JSON.parse(jsonStr);
           debugLog("L3 parsed OK, comments:" + (data.comments || []).length + " annotations:" + (data.annotations || []).length);
           callback(data.comments || [], data.annotations || []);
@@ -827,8 +859,8 @@
       function(raw) {
         debugLog("Explore stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
         try {
-          var jsonStr = stripXmlAndExtractJson(raw);
-          if (!jsonStr) { debugLog("Explore no JSON found"); callback([]); return; }
+          var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json;
+            if (!jsonStr) { debugLog("Explore no JSON found"); callback([]); return; }
           var data = JSON.parse(jsonStr);
           debugLog("Explore parsed OK, tags:" + (data.tags || []).length);
           callback(data.tags || []);
@@ -2153,21 +2185,58 @@
       var ctx = summary._debugContext;
       var panel = document.createElement("div");
       panel.id = "hp-context-panel";
-      panel.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:99998;display:flex;flex-direction:column;";
+      panel.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:99998;display:flex;flex-direction:column;";
       var header = document.createElement("div");
-      header.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:12px 16px;color:#fff;font-size:14px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.1)";
+      header.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:10px 16px;color:#fff;font-size:14px;font-weight:600;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;";
       header.innerHTML = '<span>\u6a21\u578b\u4e0a\u4e0b\u6587</span><span style="cursor:pointer;color:#f66;font-size:18px" onclick="document.getElementById(\'hp-context-panel\').remove()">X</span>';
+      var tabs = document.createElement("div");
+      tabs.style.cssText = "display:flex;gap:0;border-bottom:1px solid rgba(255,255,255,0.1);flex-shrink:0;";
+      var tabData = [
+        { key: "sys", label: "\u7cfb\u7edf\u63d0\u793a\u8bcd" },
+        { key: "usr", label: "\u7528\u6237\u6d88\u606f" },
+        { key: "mem", label: "\u8bb0\u5fc6" },
+        { key: "macro", label: "\u4e3b\u601d\u7ef4\u94fe" },
+        { key: "inline", label: "\u5185\u8054\u6821\u9a8c" }
+      ];
+      var tabContents = {};
+      tabContents["sys"] = ctx.systemPrompt || "(none)";
+      tabContents["usr"] = ctx.userMsg || "(none)";
+      tabContents["mem"] = (ctx.memory && ctx.memory !== "(none)") ? ctx.memory : "(none)";
+      tabContents["macro"] = ctx.macroChain || "(\u672a\u8fd4\u56de\u4e3b\u601d\u7ef4\u94fe)";
+      var inlineChecks = "";
+      if (summary.fullContent && summary.fullContent.inline_checks) {
+        var checks = summary.fullContent.inline_checks;
+        for (var ic = 0; ic < checks.length; ic++) {
+          inlineChecks += "--- \u7b2c" + (ic+1) + "\u6bb5 ---\n";
+          inlineChecks += "\u610f\u56fe: " + (checks[ic].intent || "") + "\n";
+          inlineChecks += "\u6587\u98ce\u5339\u914d: " + (checks[ic].vibe_match || "") + "\n";
+          inlineChecks += "\u626b\u63cf\u7ed3\u679c: " + (checks[ic].scan_result || "") + "\n\n";
+        }
+      }
+      tabContents["inline"] = inlineChecks || "(\u672a\u8fd4\u56de\u5185\u8054\u6821\u9a8c)";
+      for (var ti = 0; ti < tabData.length; ti++) {
+        (function(idx) {
+          var tab = document.createElement("div");
+          tab.style.cssText = "padding:8px 14px;color:rgba(255,255,255,0.5);font-size:12px;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;";
+          tab.textContent = tabData[idx].label + " (" + tabContents[tabData[idx].key].length + ")";
+          tab.onclick = function() {
+            var allTabs = tabs.querySelectorAll("div");
+            for (var at = 0; at < allTabs.length; at++) { allTabs[at].style.color = "rgba(255,255,255,0.5)"; allTabs[at].style.borderBottomColor = "transparent"; }
+            tab.style.color = "#fff";
+            tab.style.borderBottomColor = "#E8A0BF";
+            body.textContent = tabContents[tabData[idx].key];
+            body.scrollTop = 0;
+          };
+          tabs.appendChild(tab);
+        })(ti);
+      }
       var body = document.createElement("div");
       body.style.cssText = "flex:1;overflow-y:auto;padding:16px;color:#0f0;font-size:12px;font-family:monospace;white-space:pre-wrap;word-break:break-all;";
-      var display = "";
-      display += "=== SYSTEM PROMPT (" + ctx.systemPrompt.length + " chars) ===\n";
-      display += ctx.systemPrompt.substring(0, 3000) + (ctx.systemPrompt.length > 3000 ? "\n... (truncated)" : "");
-      display += "\n\n=== USER MESSAGE (" + ctx.userMsg.length + " chars) ===\n";
-      display += ctx.userMsg.substring(0, 3000) + (ctx.userMsg.length > 3000 ? "\n... (truncated)" : "");
-      display += "\n\n=== MEMORY (" + (ctx.memory && ctx.memory !== "(none)" ? ctx.memory.length + " chars" : "none") + " ===\n";
-      display += (ctx.memory && ctx.memory !== "(none)") ? ctx.memory.substring(0, 2000) + (ctx.memory.length > 2000 ? "\n... (truncated)" : "") : "(none)";
-      body.textContent = display;
+      body.textContent = tabContents["sys"];
+      tabs.querySelector("div").style.color = "#fff";
+      tabs.querySelector("div").style.borderBottomColor = "#E8A0BF";
       panel.appendChild(header);
+      panel.appendChild(tabs);
       panel.appendChild(body);
       document.body.appendChild(panel);
     },
@@ -2282,7 +2351,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.5.2",
+    version: "1.6.0",
     apps: [
       {
         id: "hofter-home",
