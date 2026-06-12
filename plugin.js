@@ -521,45 +521,57 @@
 
   /* ─── AI 流式调用 ─── */
   function aiChatStream(messages, temperature, onProgress, onDone, onError) {
-    var chatPromise;
     var timeoutId = setTimeout(function() {
       debugLog("stream: timeout after 300s, calling onDone with empty");
       onDone("");
     }, 300000);
     var wrappedOnDone = function(raw) {
       clearTimeout(timeoutId);
+      clearTimeout(_stallTimer);
       onDone(raw);
     };
     var wrappedOnError = function(e) {
       clearTimeout(timeoutId);
+      clearTimeout(_stallTimer);
       if (onError) onError(e); else onDone("");
     };
     var _debugChunkCount = 0;
-    var _debugFirstChunks = [];
+    var _lastContentLen = 0;
+    var _stallTimer = null;
+    var _fallbackUsed = false;
+
+    function resetStallTimer() {
+      clearTimeout(_stallTimer);
+      /* 如果60秒内fullContent没有增长，视为停滞，fallback到非流式 */
+      _stallTimer = setTimeout(function() {
+        if (_fallbackUsed) return;
+        debugLog("stream: stall detected (no new content for 60s), falling back to non-stream");
+        _fallbackUsed = true;
+        try { readerRef.cancel(); } catch(e) {}
+        doNonStreamFallback();
+      }, 60000);
+    }
 
     /* 从 SSE data 行提取文本内容，兼容 OpenAI 和 Claude 格式 */
     function extractDeltaText(dataStr) {
       try {
         var parsed = JSON.parse(dataStr);
-        /* OpenAI 格式: {"choices":[{"delta":{"content":"..."}}]} */
         if (parsed.choices && parsed.choices[0]) {
           var d = parsed.choices[0].delta;
           if (d && d.content) return d.content;
         }
-        /* Claude 格式: {"type":"content_block_delta","delta":{"type":"text_delta","text":"..."}} */
         if (parsed.type === "content_block_delta" && parsed.delta) {
           if (parsed.delta.text) return parsed.delta.text;
         }
-        /* 通用格式: {"text":"..."} 或 {"content":"..."} */
         if (parsed.text) return parsed.text;
         if (parsed.content && typeof parsed.content === "string") return parsed.content;
-        /* message 事件: {"type":"message_delta","delta":{"stop_reason":"..."}} 无文本 */
       } catch(e) {
-        debugLog("SSE parse err for: " + dataStr.substring(0, 100));
+        debugLog("SSE parse err: " + dataStr.substring(0, 120));
       }
       return null;
     }
 
+    var readerRef = null;
     function doNonStreamFallback() {
       debugLog("falling back to non-stream");
       state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
@@ -570,7 +582,7 @@
     }
 
     try {
-      chatPromise = state.roche.ai.chat({ messages: messages, temperature: temperature, stream: true });
+      var chatPromise = state.roche.ai.chat({ messages: messages, temperature: temperature, stream: true });
     } catch(e) {
       debugLog("stream: sync error on call, fallback non-stream");
       doNonStreamFallback();
@@ -581,29 +593,30 @@
       var body = response && (response.body || response.stream);
       if (body && typeof body.getReader === "function") {
         var reader = body.getReader();
+        readerRef = reader;
         var decoder = new TextDecoder();
         var fullContent = "";
         var sseBuffer = "";
-        var noDataTimeout = setTimeout(function() {
-          if (fullContent.length === 0) {
-            debugLog("stream: no data after 90s, falling back to non-stream");
-            try { reader.cancel(); } catch(e) {}
-            doNonStreamFallback();
-          }
-        }, 90000);
+        resetStallTimer();
         function pump() {
           reader.read().then(function(result) {
             if (result.done) {
-              clearTimeout(noDataTimeout);
               debugLog("stream done, content len:" + fullContent.length);
+              /* 处理sseBuffer中残留的不完整行 */
+              if (sseBuffer.trim().length > 0) {
+                var remaining = sseBuffer.trim();
+                if (remaining.indexOf("data: ") === 0) {
+                  var text = extractDeltaText(remaining.substring(6));
+                  if (text !== null) { fullContent += text; if (onProgress) onProgress(fullContent); }
+                }
+              }
               wrappedOnDone(fullContent);
               return;
             }
             var chunk = decoder.decode(result.value, { stream: true });
             _debugChunkCount++;
-            if (_debugChunkCount <= 3) {
-              _debugFirstChunks.push(chunk.substring(0, 200));
-              debugLog("stream chunk #" + _debugChunkCount + " len:" + chunk.length + " preview:" + chunk.substring(0, 150));
+            if (_debugChunkCount <= 5) {
+              debugLog("stream chunk #" + _debugChunkCount + " len:" + chunk.length + " preview:" + chunk.substring(0, 200));
             }
             sseBuffer += chunk;
             var lines = sseBuffer.split("\n");
@@ -619,9 +632,13 @@
                 if (onProgress) onProgress(fullContent);
               }
             }
+            /* 如果fullContent增长了，重置停滞计时器 */
+            if (fullContent.length > _lastContentLen) {
+              _lastContentLen = fullContent.length;
+              resetStallTimer();
+            }
             pump();
           }).catch(function(e) {
-            clearTimeout(noDataTimeout);
             debugLog("stream read err:" + e.message + ", content len:" + fullContent.length);
             wrappedOnDone(fullContent);
           });
