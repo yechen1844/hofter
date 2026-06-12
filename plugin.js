@@ -631,7 +631,8 @@
       "\u2501\u2501 \u7528\u6237\u7684\u6240\u6709CP\u914d\u5bf9 \u2501\u2501"];
     for (var i = 0; i < cpTags.length; i++) {
       var tag = cpTags[i];
-      if (lockTag && tag.id !== lockTag.id) continue;
+      var isCpLock = lockTag && lockTag.leftSide;
+      if (isCpLock && tag.id !== lockTag.id) continue;
       var left = tag.leftSide || tag.attackSide || {};
       var right = tag.rightSide || tag.defenseSide || {};
       ctx.push("CP #" + (i+1) + ": " + tag.name + " (id:" + tag.id + ")");
@@ -906,10 +907,12 @@
   function getStyles() {
     return '.' + ROOT_CLASS + '{position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-primary);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;overflow:hidden;--primary:#E8A0BF;--primary-light:#F0C4D8;--primary-dark:#C084B0;--primary-gradient:linear-gradient(135deg,#E8A0BF,#C084B0,#9B7EB8);--bg-primary:#FAFAF9;--bg-card:#FFFFFF;--bg-secondary:#F5F3F1;--text-primary:#3D3340;--text-secondary:#7A6F7D;--text-hint:#B8ADB8;--like-red:#E85A6B;--comment-blue:#6BA8E8;--star-gold:#E8C46B;--glass-bg:rgba(250,249,249,0.72);--glass-blur:blur(20px);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px}' +
     '.' + ROOT_CLASS + ' *{box-sizing:border-box;margin:0;padding:0}' +
-    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);position:sticky;top:0;z-index:100;min-height:48px;max-height:64px;overflow:hidden;gap:4px}' +
+    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);position:sticky;top:0;z-index:100;height:48px;overflow:visible;gap:8px}' +
     '.' + ROOT_CLASS + ' .hp-header-title{font-size:17px;font-weight:700;text-align:center;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}' +
-    '.' + ROOT_CLASS + ' .hp-header-left,' + '.' + ROOT_CLASS + ' .hp-header-right{display:flex;align-items:center;gap:4px;min-width:auto;max-width:40%;flex-shrink:0}' +
-    '.' + ROOT_CLASS + ' .hp-header-right{justify-content:flex-end}' +
+    '.' + ROOT_CLASS + ' .hp-header-left,' + '.' + ROOT_CLASS + ' .hp-header-right{display:flex;align-items:center;gap:4px;flex-shrink:0}' +
+    '.' + ROOT_CLASS + ' .hp-header-left:empty,' + '.' + ROOT_CLASS + ' .hp-header-right:empty{min-width:0;width:0;padding:0;gap:0}' +
+    '.' + ROOT_CLASS + ' .hp-header-left:not(:empty){min-width:36px}' +
+    '.' + ROOT_CLASS + ' .hp-header-right:not(:empty){min-width:36px;justify-content:flex-end}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn{width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--text-primary);transition:background .2s,transform .1s;position:relative;-webkit-user-select:none;user-select:none}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn:hover{background:var(--bg-secondary)}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn:active{transform:scale(.92)}' +
@@ -1127,8 +1130,8 @@
     '}' +
     /* ── 移动端小屏适配 (<480px) ── */
     '@media(max-width:479px){' +
-      '.' + ROOT_CLASS + ' .hp-header{padding:10px 12px;gap:2px}' +
-      '.' + ROOT_CLASS + ' .hp-header-title{font-size:16px}' +
+      '.' + ROOT_CLASS + ' .hp-header{padding:8px 10px;gap:4px;height:44px}' +
+      '.' + ROOT_CLASS + ' .hp-header-title{font-size:15px}' +
       '.' + ROOT_CLASS + ' .hp-icon-btn{width:32px;height:32px;min-width:32px;min-height:32px}' +
       '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:20px;height:20px;max-width:20px;max-height:20px}' +
       '.' + ROOT_CLASS + ' .hp-nav-item svg{width:20px;height:20px}' +
@@ -1181,7 +1184,7 @@
         saveTropeTags(state.tropeTags);
         tropeId = newTrope.id;
       }
-      tropeHtml += '<span class="hp-tag hp-tag-sm" onclick="event.stopPropagation();window.__hofter.openTagPage(\'' + tropeId + '\')">' + escapeHtml(tropeName) + '</span>';
+      tropeHtml += '<span class="hp-tag hp-tag-sm" onclick="event.stopPropagation();window.__hofter.handleTagClick(\'' + tropeId + '\', \'trope\')">' + escapeHtml(tropeName) + '</span>';
     }
 
     var heartIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
@@ -1194,7 +1197,7 @@
       '<div class="hp-card-body">' +
         '<div class="hp-card-meta">' +
           '<span class="hp-card-author">' + escapeHtml(authorName) + '</span>' +
-          (cpName ? '<span class="hp-card-cp" onclick="event.stopPropagation();window.__hofter.openTagPageById(\'' + escapeHtml(cpTagId) + '\')">' + escapeHtml(cpName) + '</span>' : '') +
+          (cpName ? '<span class="hp-card-cp" onclick="event.stopPropagation();window.__hofter.handleTagClick(\'' + escapeHtml(cpTagId) + '\', \'cp\')">' + escapeHtml(cpName) + '</span>' : '') +
         '</div>' +
         '<div class="hp-card-excerpt">' + escapeHtml(excerpt) + '</div>' +
         (warningHtml ? '<div class="hp-card-tags">' + warningHtml + '</div>' : '') +
@@ -1227,14 +1230,14 @@
   }
 
   function renderHeaderContent(header) {
-    var left = '<div class="hp-header-left"></div>', title = "", right = "";
-    if (state.currentPage === "home") { title = '<span ondblclick="window.__hofter.toggleDebug()">hofter</span>'; right = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div><div class="hp-icon-btn" onclick="window.__hofter.closeApp()">' + ICONS.close + '</div>'; }
+    var leftHtml = "", title = "", rightHtml = "";
+    if (state.currentPage === "home") { title = '<span ondblclick="window.__hofter.toggleDebug()">hofter</span>'; rightHtml = '<div class="hp-icon-btn" onclick="window.__hofter.showMessages()">' + ICONS.bell + '</div><div class="hp-icon-btn" onclick="window.__hofter.closeApp()">' + ICONS.close + '</div>'; }
     else if (state.currentPage === "discover") { title = "\u53d1\u73b0"; }
     else if (state.currentPage === "collection") { title = "\u6536\u85cf"; }
-    else if (state.currentPage === "profile") { title = "\u6211\u7684"; right = '<div class="hp-icon-btn" onclick="window.__hofter.showSettings()">' + ICONS.settings + '</div>'; }
-    else if (state.currentPage === "tagPage") { title = state.currentTagPage ? state.currentTagPage.name : ""; left = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.goBackFromTag()">' + ICONS.back + '</div></div>'; }
+    else if (state.currentPage === "profile") { title = "\u6211\u7684"; rightHtml = '<div class="hp-icon-btn" onclick="window.__hofter.showSettings()">' + ICONS.settings + '</div>'; }
+    else if (state.currentPage === "tagPage") { title = state.currentTagPage ? state.currentTagPage.name : ""; leftHtml = '<div class="hp-icon-btn" onclick="window.__hofter.goBackFromTag()">' + ICONS.back + '</div>'; }
     var titleHtml = (state.currentPage === "home") ? title : escapeHtml(title);
-    header.innerHTML = left + '<div class="hp-header-title">' + titleHtml + '</div><div class="hp-header-right">' + right + '</div>';
+    header.innerHTML = '<div class="hp-header-left">' + leftHtml + '</div><div class="hp-header-title">' + titleHtml + '</div><div class="hp-header-right">' + rightHtml + '</div>';
   }
 
   function renderNavContent(nav) {
@@ -1315,7 +1318,7 @@
       for (var j = 0; j < state.cpTags.length; j++) {
         var tag = state.cpTags[j];
         var tagEl = document.createElement("div"); tagEl.className = "hp-tag-item";
-        tagEl.innerHTML = '<span onclick="window.__hofter.openTagPage(\'' + tag.id + '\')">' + escapeHtml(tag.name) + '</span><span class="hp-tag-remove" onclick="event.stopPropagation();window.__hofter.removeCpTag(\'' + tag.id + '\')">' + ICONS.close.replace(/24/g,"14") + '</span>';
+        tagEl.innerHTML = '<span onclick="window.__hofter.handleTagClick(\'' + tag.id + '\', \'cp\')">' + escapeHtml(tag.name) + '</span><span class="hp-tag-remove" onclick="event.stopPropagation();window.__hofter.removeCpTag(\'' + tag.id + '\')">' + ICONS.close.replace(/24/g,"14") + '</span>';
         cpList.appendChild(tagEl);
       }
       sec.appendChild(cpList);
@@ -1324,7 +1327,7 @@
       for (var k = 0; k < state.tropeTags.length; k++) {
         var tTag = state.tropeTags[k];
         var tEl = document.createElement("div"); tEl.className = "hp-tag-item";
-        tEl.innerHTML = '<span onclick="window.__hofter.openTagPage(\'' + tTag.id + '\')">' + escapeHtml(tTag.name) + '</span><span class="hp-tag-remove" onclick="event.stopPropagation();window.__hofter.removeTropeTag(\'' + tTag.id + '\')">' + ICONS.close.replace(/24/g,"14") + '</span>';
+        tEl.innerHTML = '<span onclick="window.__hofter.handleTagClick(\'' + tTag.id + '\', \'trope\')">' + escapeHtml(tTag.name) + '</span><span class="hp-tag-remove" onclick="event.stopPropagation();window.__hofter.removeTropeTag(\'' + tTag.id + '\')">' + ICONS.close.replace(/24/g,"14") + '</span>';
         trList.appendChild(tEl);
       }
       sec.appendChild(trList);
@@ -1498,7 +1501,7 @@
       if (extraItems.length > 0) {
         container.innerHTML += '<div class="hp-tag-section-title" style="font-size:13px;color:var(--text-hint)">\u63a8\u8350\u6897\u6587</div>';
         var exGrid = document.createElement("div"); exGrid.className = "hp-card-grid";
-        for (var exi = 0; exi < extraItems.length; exi++) exGrid.appendChild(createSummaryCard(extraItems[ei]));
+        for (var exi = 0; exi < extraItems.length; exi++) exGrid.appendChild(createSummaryCard(extraItems[exi]));
         container.appendChild(exGrid);
       }
       if (cpItems.length === 0 && extraItems.length === 0) {
@@ -1727,7 +1730,7 @@
     var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "create-page"; overlay.style.alignItems = "stretch";
     var page = document.createElement("div"); page.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
     var header = document.createElement("div"); header.className = "hp-header";
-    header.innerHTML = '<div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'create-page\')">' + ICONS.back + '</div><div class="hp-header-title">' + (mode==="inspire"? "\u7075\u611f\u521b\u4f5c" : mode==="write"? "\u5199\u6587\u7ae0" : "\u53d1\u52a8\u6001") + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.submitCreate(\'' + mode + '\')">' + ICONS.check + '</div></div>';
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'create-page\')">' + ICONS.back + '</div></div><div class="hp-header-title">' + (mode==="inspire"? "\u7075\u611f\u521b\u4f5c" : mode==="write"? "\u5199\u6587\u7ae0" : "\u53d1\u52a8\u6001") + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.submitCreate(\'' + mode + '\')">' + ICONS.check + '</div></div>';
     page.appendChild(header);
     var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto;padding:16px 20px";
     if (mode === "inspire") {
@@ -1755,7 +1758,7 @@
     var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "settings-page"; overlay.style.alignItems = "stretch";
     var page = document.createElement("div"); page.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
     var header = document.createElement("div"); header.className = "hp-header";
-    header.innerHTML = '<div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'settings-page\')">' + ICONS.back + '</div><div class="hp-header-title">\u8bbe\u7f6e</div><div class="hp-header-right"></div>';
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'settings-page\')">' + ICONS.back + '</div></div><div class="hp-header-title">\u8bbe\u7f6e</div><div class="hp-header-right"></div>';
     page.appendChild(header);
     var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto";
     var s = getSettings();
@@ -1793,7 +1796,7 @@
     var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "memory-mount"; overlay.style.alignItems = "stretch";
     var page = document.createElement("div"); page.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
     var header = document.createElement("div"); header.className = "hp-header";
-    header.innerHTML = '<div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'memory-mount\')">' + ICONS.back + '</div><div class="hp-header-title">\u7ba1\u7406\u8bb0\u5fc6\u6302\u8f7d</div><div class="hp-header-right"></div>';
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'memory-mount\')">' + ICONS.back + '</div></div><div class="hp-header-title">\u7ba1\u7406\u8bb0\u5fc6\u6302\u8f7d</div><div class="hp-header-right"></div>';
     page.appendChild(header);
     var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto;padding:16px 20px";
     body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">\u9009\u62e9\u8981\u6302\u8f7d\u7684\u4f1a\u8bdd\uff0c\u88ab\u6302\u8f7d\u7684\u4f1a\u8bdd\u8bb0\u5fc6\u5c06\u6309\u6982\u7387\u968f\u673a\u4f20\u5165AI\u521b\u4f5c\u4e2d</p><div id="hp-conversation-list"></div>';
@@ -1852,9 +1855,9 @@
       } else if (res.type === "persona") {
         html += '<div class="hp-list-item"><div class="hp-list-item-avatar">' + (res.data.avatar ? '<img src="'+res.data.avatar+'">' : (res.data.name||"?")[0]) + '</div><div class="hp-list-item-info"><div class="hp-list-item-name">' + escapeHtml(res.data.name||res.data.handle) + '</div><div class="hp-list-item-desc">\u4eba\u8bbe</div></div></div>';
       } else if (res.type === "cpTag") {
-        html += '<div class="hp-list-item" onclick="window.__hofter.openTagPageById(\'' + res.data.id + '\')"><div class="hp-list-item-avatar" style="background:var(--primary-gradient)">' + ICONS.heart.replace(/24/g,"18").replace("currentColor","#fff") + '</div><div class="hp-list-item-info"><div class="hp-list-item-name">' + escapeHtml(res.data.name) + '</div><div class="hp-list-item-desc">CP\u6807\u7b7e</div></div></div>';
+        html += '<div class="hp-list-item" onclick="window.__hofter.handleTagClick(\'' + res.data.id + '\', \'cp\')"><div class="hp-list-item-avatar" style="background:var(--primary-gradient)">' + ICONS.heart.replace(/24/g,"18").replace("currentColor","#fff") + '</div><div class="hp-list-item-info"><div class="hp-list-item-name">' + escapeHtml(res.data.name) + '</div><div class="hp-list-item-desc">CP\u6807\u7b7e</div></div></div>';
       } else {
-        html += '<div class="hp-list-item" onclick="window.__hofter.openTagPageById(\'' + res.data.id + '\')"><div class="hp-list-item-avatar" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">' + ICONS.tag.replace(/24/g,"18").replace("currentColor","#fff") + '</div><div class="hp-list-item-info"><div class="hp-list-item-name">' + escapeHtml(res.data.name) + '</div><div class="hp-list-item-desc">\u8bbe\u5b9a\u6807\u7b7e</div></div></div>';
+        html += '<div class="hp-list-item" onclick="window.__hofter.handleTagClick(\'' + res.data.id + '\', \'trope\')"><div class="hp-list-item-avatar" style="background:linear-gradient(135deg,#43e97b,#38f9d7)">' + ICONS.tag.replace(/24/g,"18").replace("currentColor","#fff") + '</div><div class="hp-list-item-info"><div class="hp-list-item-name">' + escapeHtml(res.data.name) + '</div><div class="hp-list-item-desc">\u8bbe\u5b9a\u6807\u7b7e</div></div></div>';
       }
     }
     resultsEl.innerHTML = html;
@@ -1867,7 +1870,7 @@
     var tagName = cName + " \u00d7 " + pName;
     var existing = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].name === tagName) { existing = state.cpTags[i]; break; } }
-    if (existing) { openTagPage(existing.id); return; }
+    if (existing) { state.currentTagPage = existing; state.currentPage = "tagPage"; renderApp(); return; }
     var newTag = { id: generateId(), name: tagName, leftSide: { id: ch.id, name: cName, persona: ch.persona || ch.bio || "", avatar: ch.avatar || "" }, rightSide: { id: state.activePersona.id, name: pName, persona: state.activePersona.persona || state.activePersona.bio || "", avatar: state.activePersona.avatar || "" }, fandomTags: [], createdBy: "user" };
     state.cpTags.push(newTag); saveCpTags(state.cpTags);
     showToast("CP\u6807\u7b7e\u5df2\u521b\u5efa: " + tagName);
@@ -1877,7 +1880,7 @@
   function createTropeFromSearch(name) {
     var existing = null;
     for (var i = 0; i < state.tropeTags.length; i++) { if (state.tropeTags[i].name === name) { existing = state.tropeTags[i]; break; } }
-    if (existing) { openTagPage(existing.id); return; }
+    if (existing) { state.currentTagPage = existing; state.currentPage = "tagPage"; renderApp(); return; }
     var newTag = { id: generateId(), name: name, description: "", createdBy: "user" };
     state.tropeTags.push(newTag); saveTropeTags(state.tropeTags);
     showToast("\u6807\u7b7e\u5df2\u521b\u5efa: " + name);
@@ -1887,7 +1890,7 @@
   function showMessages() {
     var overlay = document.createElement("div"); overlay.className = "hp-message-overlay"; overlay.id = "messages-page";
     var header = document.createElement("div"); header.className = "hp-header";
-    header.innerHTML = '<div class="hp-icon-btn" onclick="window.__hofter.closeMessages()">' + ICONS.back + '</div><div class="hp-header-title">\u6d88\u606f</div><div class="hp-header-right"></div>';
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeMessages()">' + ICONS.back + '</div></div><div class="hp-header-title">\u6d88\u606f</div><div class="hp-header-right"></div>';
     overlay.appendChild(header);
     var tabs = document.createElement("div"); tabs.className = "hp-msg-tabs";
     tabs.innerHTML = '<div class="hp-msg-tab ' + (state.messageTab==="activity"?"active":"") + '" onclick="window.__hofter.switchMessageTab(\'activity\')">\u52a8\u6001</div><div class="hp-msg-tab ' + (state.messageTab==="comment"?"active":"") + '" onclick="window.__hofter.switchMessageTab(\'comment\')">\u8bc4\u8bba</div><div class="hp-msg-tab ' + (state.messageTab==="like"?"active":"") + '" onclick="window.__hofter.switchMessageTab(\'like\')">\u8d5e</div>';
@@ -1941,7 +1944,7 @@
     if (!summary) { showToast("\u672a\u627e\u5230\u4f5c\u54c1"); return; }
     state.currentReadingSummary = summary;
     var readerEl = document.createElement("div"); readerEl.className = "hp-reader-page"; readerEl.id = "hp-reader";
-    readerEl.innerHTML = '<div class="hp-reader-header"><div class="hp-icon-btn" onclick="window.__hofter.closeReader()">' + ICONS.back + '</div><div style="flex:1;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escapeHtml(summary.title) + '</div><div class="hp-icon-btn" onclick="window.__hofter.showReaderSettings()">' + ICONS.textSize + '</div></div><div id="hp-reader-content" style="padding-bottom:60px"><div id="hp-reader-spinner" style="text-align:center;padding:40px 20px;color:var(--text-hint)"><div class="hp-spinner" style="margin:0 auto"></div><p style="margin-top:12px">\u7075\u611f\u521b\u4f5c\u4e2d...</p></div><div id="hp-reader-stream" style="padding:16px;display:none"></div></div>';
+    readerEl.innerHTML = '<div class="hp-reader-header"><div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeReader()">' + ICONS.back + '</div></div><div style="flex:1;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">' + escapeHtml(summary.title) + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.showReaderSettings()">' + ICONS.textSize + '</div></div></div><div id="hp-reader-content" style="padding-bottom:60px"><div id="hp-reader-spinner" style="text-align:center;padding:40px 20px;color:var(--text-hint)"><div class="hp-spinner" style="margin:0 auto"></div><p style="margin-top:12px">\u7075\u611f\u521b\u4f5c\u4e2d...</p></div><div id="hp-reader-stream" style="padding:16px;display:none"></div></div>';
     state.containerEl.appendChild(readerEl);
     if (summary.fullContent) {
       renderReaderContent(summary);
@@ -2106,7 +2109,7 @@
     var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "tag-manager"; overlay.style.alignItems = "stretch";
     var page = document.createElement("div"); page.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
     var header = document.createElement("div"); header.className = "hp-header";
-    header.innerHTML = '<div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'tag-manager\')">' + ICONS.back + '</div><div class="hp-header-title">\u7ba1\u7406\u6807\u7b7e</div><div class="hp-header-right"></div>';
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'tag-manager\')">' + ICONS.back + '</div></div><div class="hp-header-title">\u7ba1\u7406\u6807\u7b7e</div><div class="hp-header-right"></div>';
     page.appendChild(header);
     var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto";
     var html = '<div class="hp-section-title">CP\u6807\u7b7e</div><div class="hp-tag-list">';
@@ -2199,6 +2202,16 @@
     openTropeTagPage: function(tagId) {
       guardedTagAction(function() {
         for (var j = 0; j < state.tropeTags.length; j++) { if (state.tropeTags[j].id === tagId) { state.currentTagPage = state.tropeTags[j]; break; } }
+        if (state.currentTagPage) { state.currentPage = "tagPage"; renderApp(); }
+      });
+    },
+    handleTagClick: function(tagId, tagType) {
+      guardedTagAction(function() {
+        if (tagType === "cp") {
+          for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === tagId) { state.currentTagPage = state.cpTags[i]; break; } }
+        } else {
+          for (var j = 0; j < state.tropeTags.length; j++) { if (state.tropeTags[j].id === tagId) { state.currentTagPage = state.tropeTags[j]; break; } }
+        }
         if (state.currentTagPage) { state.currentPage = "tagPage"; renderApp(); }
       });
     },
