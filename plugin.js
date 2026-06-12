@@ -3678,6 +3678,7 @@
           summary.fullContent = result;
           if (result.continuation_summary) summary.continuationSummary = result.continuation_summary;
           if (result.brief_summary) summary.briefSummary = result.brief_summary;
+          if (regenSummary._debugContext) summary._debugContext = regenSummary._debugContext;
           summary._currentChapter = 1;
           saveSummariesCache(state.summaries);
           renderReaderContent(summary);
