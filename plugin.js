@@ -522,14 +522,26 @@
   /* ─── AI 流式调用 ─── */
   function aiChatStream(messages, temperature, onProgress, onDone, onError) {
     var chatPromise;
+    var timeoutId = setTimeout(function() {
+      debugLog("stream: timeout after 120s, calling onDone with empty");
+      onDone("");
+    }, 120000);
+    var wrappedOnDone = function(raw) {
+      clearTimeout(timeoutId);
+      onDone(raw);
+    };
+    var wrappedOnError = function(e) {
+      clearTimeout(timeoutId);
+      if (onError) onError(e); else onDone("");
+    };
     try {
       chatPromise = state.roche.ai.chat({ messages: messages, temperature: temperature, stream: true });
     } catch(e) {
       debugLog("stream: sync error on call, fallback non-stream");
       state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
         var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
-        onDone(raw);
-      }).catch(function(e2) { if (onError) onError(e2); else onDone(""); });
+        wrappedOnDone(raw);
+      }).catch(function(e2) { wrappedOnError(e2); });
       return;
     }
     chatPromise.then(function(response) {
@@ -544,7 +556,7 @@
           reader.read().then(function(result) {
             if (result.done) {
               debugLog("stream done, content len:" + fullContent.length);
-              onDone(fullContent);
+              wrappedOnDone(fullContent);
               return;
             }
             var chunk = decoder.decode(result.value, { stream: true });
@@ -568,7 +580,7 @@
             pump();
           }).catch(function(e) {
             debugLog("stream read err:" + e.message + ", content len:" + fullContent.length);
-            onDone(fullContent);
+            wrappedOnDone(fullContent);
           });
         }
         pump();
@@ -578,17 +590,17 @@
         if (typeof response === "string") raw = response;
         else if (response && response.text && typeof response.text === "string") raw = response.text;
         else if (response && typeof response.text === "function") {
-          response.text().then(function(t) { onDone(t); }).catch(function(e) { if (onError) onError(e); else onDone(""); });
+          response.text().then(function(t) { wrappedOnDone(t); }).catch(function(e) { wrappedOnError(e); });
           return;
         } else raw = String(response || "");
-        onDone(raw);
+        wrappedOnDone(raw);
       }
     }).catch(function(e) {
       debugLog("stream chat err:" + (e && e.message ? e.message : String(e)) + ", fallback non-stream");
       state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
         var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
-        onDone(raw);
-      }).catch(function(e2) { if (onError) onError(e2); else onDone(""); });
+        wrappedOnDone(raw);
+      }).catch(function(e2) { wrappedOnError(e2); });
     });
   }
 
@@ -687,7 +699,21 @@
     debugLog("L2 start, title:" + (summary.title || "?") + " cpTagId:" + (summary.cpTagId || "?"));
     var cpTag = null;
     for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === summary.cpTagId) { cpTag = state.cpTags[i]; break; } }
-    if (!cpTag) { debugLog("L2 cpTag not found, abort"); callback(null); return; }
+    if (!cpTag && summary.cpTagName) {
+      for (var i2 = 0; i2 < state.cpTags.length; i2++) { if (state.cpTags[i2].name === summary.cpTagName) { cpTag = state.cpTags[i2]; break; } }
+    }
+    if (!cpTag) {
+      debugLog("L2 cpTag not found, using fallback");
+      var cpName = summary.cp || summary.cpTagName || "";
+      var parts = cpName.split(/\s*[×xX]\s*/);
+      cpTag = {
+        id: summary.cpTagId || "fallback",
+        name: cpName,
+        leftSide: { id: "f1", name: parts[0] || "\u89d2\u8272A", persona: "" },
+        rightSide: { id: "f2", name: parts[1] || "\u89d2\u8272B", persona: "" },
+        fandomTags: []
+      };
+    }
     var left = cpTag.leftSide || cpTag.attackSide || {};
     var right = cpTag.rightSide || cpTag.defenseSide || {};
     debugLog("L2 cpTag found, left:" + (left.name || "?") + " right:" + (right.name || "?"));
@@ -2674,11 +2700,19 @@
       var feedbackEl = document.getElementById("hp-regenerate-feedback");
       var feedback = feedbackEl ? feedbackEl.value.trim() : "";
       showLoading();
+      /* 确保cpTagId存在，如果找不到则尝试按名称匹配 */
+      if (!summary.cpTagId && summary.cpTagName) {
+        for (var ci = 0; ci < state.cpTags.length; ci++) {
+          if (state.cpTags[ci].name === summary.cpTagName) { summary.cpTagId = state.cpTags[ci].id; break; }
+        }
+      }
       /* 构建摘要对象，附加用户反馈 */
       var regenSummary = {
+        id: summary.id,
         title: summary.title,
         cpTagId: summary.cpTagId,
-        cpTagName: summary.cpTagName,
+        cp: summary.cp || summary.cpTagName || "",
+        cpTagName: summary.cpTagName || "",
         excerpt: summary.excerpt || summary.summary || "",
         summary: summary.summary || summary.excerpt || "",
         tags: summary.tags || [],
