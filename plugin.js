@@ -534,32 +534,77 @@
       clearTimeout(timeoutId);
       if (onError) onError(e); else onDone("");
     };
+    var _debugChunkCount = 0;
+    var _debugFirstChunks = [];
+
+    /* 从 SSE data 行提取文本内容，兼容 OpenAI 和 Claude 格式 */
+    function extractDeltaText(dataStr) {
+      try {
+        var parsed = JSON.parse(dataStr);
+        /* OpenAI 格式: {"choices":[{"delta":{"content":"..."}}]} */
+        if (parsed.choices && parsed.choices[0]) {
+          var d = parsed.choices[0].delta;
+          if (d && d.content) return d.content;
+        }
+        /* Claude 格式: {"type":"content_block_delta","delta":{"type":"text_delta","text":"..."}} */
+        if (parsed.type === "content_block_delta" && parsed.delta) {
+          if (parsed.delta.text) return parsed.delta.text;
+        }
+        /* 通用格式: {"text":"..."} 或 {"content":"..."} */
+        if (parsed.text) return parsed.text;
+        if (parsed.content && typeof parsed.content === "string") return parsed.content;
+        /* message 事件: {"type":"message_delta","delta":{"stop_reason":"..."}} 无文本 */
+      } catch(e) {
+        debugLog("SSE parse err for: " + dataStr.substring(0, 100));
+      }
+      return null;
+    }
+
+    function doNonStreamFallback() {
+      debugLog("falling back to non-stream");
+      state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
+        var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
+        debugLog("non-stream fallback got len:" + raw.length);
+        wrappedOnDone(raw);
+      }).catch(function(e2) { debugLog("non-stream fallback err:" + (e2&&e2.message?e2.message:String(e2))); wrappedOnError(e2); });
+    }
+
     try {
       chatPromise = state.roche.ai.chat({ messages: messages, temperature: temperature, stream: true });
     } catch(e) {
       debugLog("stream: sync error on call, fallback non-stream");
-      state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
-        var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
-        wrappedOnDone(raw);
-      }).catch(function(e2) { wrappedOnError(e2); });
+      doNonStreamFallback();
       return;
     }
     chatPromise.then(function(response) {
-      debugLog("stream resp type:" + typeof response);
+      debugLog("stream resp type:" + typeof response + " keys:" + (response ? Object.keys(response).join(",") : "null"));
       var body = response && (response.body || response.stream);
       if (body && typeof body.getReader === "function") {
         var reader = body.getReader();
         var decoder = new TextDecoder();
         var fullContent = "";
         var sseBuffer = "";
+        var noDataTimeout = setTimeout(function() {
+          if (fullContent.length === 0) {
+            debugLog("stream: no data after 15s, falling back to non-stream");
+            try { reader.cancel(); } catch(e) {}
+            doNonStreamFallback();
+          }
+        }, 15000);
         function pump() {
           reader.read().then(function(result) {
             if (result.done) {
+              clearTimeout(noDataTimeout);
               debugLog("stream done, content len:" + fullContent.length);
               wrappedOnDone(fullContent);
               return;
             }
             var chunk = decoder.decode(result.value, { stream: true });
+            _debugChunkCount++;
+            if (_debugChunkCount <= 3) {
+              _debugFirstChunks.push(chunk.substring(0, 200));
+              debugLog("stream chunk #" + _debugChunkCount + " len:" + chunk.length + " preview:" + chunk.substring(0, 150));
+            }
             sseBuffer += chunk;
             var lines = sseBuffer.split("\n");
             sseBuffer = lines.pop() || "";
@@ -568,17 +613,15 @@
               if (line.indexOf("data: ") !== 0) continue;
               var dataStr = line.substring(6);
               if (dataStr === "[DONE]") continue;
-              try {
-                var parsed = JSON.parse(dataStr);
-                var delta = parsed.choices && parsed.choices[0] && parsed.choices[0].delta;
-                if (delta && delta.content) {
-                  fullContent += delta.content;
-                  if (onProgress) onProgress(fullContent);
-                }
-              } catch(e) { /* skip unparseable lines */ }
+              var text = extractDeltaText(dataStr);
+              if (text !== null) {
+                fullContent += text;
+                if (onProgress) onProgress(fullContent);
+              }
             }
             pump();
           }).catch(function(e) {
+            clearTimeout(noDataTimeout);
             debugLog("stream read err:" + e.message + ", content len:" + fullContent.length);
             wrappedOnDone(fullContent);
           });
@@ -590,17 +633,18 @@
         if (typeof response === "string") raw = response;
         else if (response && response.text && typeof response.text === "string") raw = response.text;
         else if (response && typeof response.text === "function") {
-          response.text().then(function(t) { wrappedOnDone(t); }).catch(function(e) { wrappedOnError(e); });
+          response.text().then(function(t) { debugLog("resp.text() len:" + t.length); wrappedOnDone(t); }).catch(function(e) { wrappedOnError(e); });
           return;
-        } else raw = String(response || "");
+        } else {
+          debugLog("stream: unknown resp format, keys:" + Object.keys(response || {}).join(","));
+          raw = JSON.stringify(response);
+        }
+        debugLog("direct extract len:" + raw.length);
         wrappedOnDone(raw);
       }
     }).catch(function(e) {
       debugLog("stream chat err:" + (e && e.message ? e.message : String(e)) + ", fallback non-stream");
-      state.roche.ai.chat({ messages: messages, temperature: temperature }).then(function(r) {
-        var raw = (r && typeof r === "string") ? r : (r && r.text) ? r.text : String(r || "");
-        wrappedOnDone(raw);
-      }).catch(function(e2) { wrappedOnError(e2); });
+      doNonStreamFallback();
     });
   }
 
