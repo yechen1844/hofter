@@ -789,6 +789,46 @@
     } catch(e) { debugLog("L1 FATAL:" + e.message + " stack:" + (e.stack||"").substring(0,300)); callback(null); }
   }
 
+  /* ─── 从原始文本中提取段落（JSON解析失败时的fallback） ─── */
+  function extractParagraphsFromRaw(raw) {
+    var paragraphs = [];
+    /* 先清理XML标签 */
+    var cleaned = raw.replace(/<macro_chain>[\s\S]*?<\/macro_chain>/gi, "")
+      .replace(/<inline_check>[\s\S]*?<\/inline_check>/gi, "")
+      .replace(/<macro_cot>[\s\S]*?<\/macro_cot>/gi, "")
+      .replace(/<inline_chain>[\s\S]*?<\/inline_chain>/gi, "")
+      .replace(/<core_philosophy>[\s\S]*?<\/core_philosophy>/gi, "")
+      .replace(/<knowledge_base>[\s\S]*?<\/knowledge_base>/gi, "")
+      .replace(/<output_protocol>[\s\S]*?<\/output_protocol>/gi, "")
+      .replace(/<inline_check_system>[\s\S]*?<\/inline_check_system>/gi, "")
+      .replace(/<system_execution_directive>[\s\S]*?<\/system_execution_directive>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/<[^>]+>/g, "");
+    /* 方法1: 从JSON的"text"字段提取 */
+    var textParts = cleaned.split(/"text"\s*:\s*"/);
+    for (var i = 1; i < textParts.length; i++) {
+      var t = textParts[i].replace(/"\s*[,}]\s*$/, "").replace(/\\"/g, '"').replace(/\\n/g, "\n");
+      if (t.trim().length > 5) paragraphs.push(t.trim());
+    }
+    if (paragraphs.length > 0) return paragraphs;
+    /* 方法2: 按双换行分割，过滤掉JSON结构行 */
+    var lines = cleaned.split(/\n/);
+    var buffer = "";
+    for (var j = 0; j < lines.length; j++) {
+      var line = lines[j].trim();
+      if (!line || line.indexOf('"') === 0 || line.indexOf('{') === 0 || line.indexOf('}') === 0 ||
+          line.indexOf('[') === 0 || line.indexOf(']') === 0 || line.indexOf(':') === 0) {
+        if (buffer.trim().length > 10) { paragraphs.push(buffer.trim()); buffer = ""; }
+        continue;
+      }
+      /* 跳过明显的JSON键值行 */
+      if (/^"[a-zA-Z_]+"/.test(line)) { if (buffer.trim().length > 10) { paragraphs.push(buffer.trim()); buffer = ""; } continue; }
+      buffer += (buffer ? " " : "") + line;
+    }
+    if (buffer.trim().length > 10) paragraphs.push(buffer.trim());
+    return paragraphs;
+  }
+
   /* ─── 流式中断时的 fallback：用已接收的段落构建 fullContent ─── */
   function _useStreamedFallback(summary, paragraphs, callback) {
     if (!paragraphs || paragraphs.length === 0) {
@@ -928,11 +968,12 @@
             if (macroChain) summary._debugContext.macroChain = macroChain;
             callback(data);
           } catch(e) {
-            debugLog("L2 parse error:" + e.message + ", using streamed paragraphs fallback");
-            _useStreamedFallback(summary, _streamedParagraphs, callback);
+            debugLog("L2 parse error:" + e.message + ", trying raw paragraph extraction");
+            var rawParagraphs = _streamedParagraphs.length > 0 ? _streamedParagraphs : extractParagraphsFromRaw(raw);
+            _useStreamedFallback(summary, rawParagraphs, callback);
           }
         },
-        function(e) { debugLog("L2 stream error:" + (e && e.message ? e.message : String(e)) + ", using streamed paragraphs fallback"); _useStreamedFallback(summary, _streamedParagraphs, callback); }
+        function(e) { debugLog("L2 stream error:" + (e && e.message ? e.message : String(e)) + ", trying raw paragraph extraction"); var rawParagraphs = _streamedParagraphs.length > 0 ? _streamedParagraphs : extractParagraphsFromRaw(""); _useStreamedFallback(summary, rawParagraphs, callback); }
       );
     };
     var attachMem = shouldAttachMemory();
@@ -1047,13 +1088,13 @@
           debugLog("Cont stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
           try {
             var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json;
-            if (!jsonStr) { debugLog("Cont no JSON found, using fallback"); _useStreamedFallback(summary, _contParagraphs, callback); return; }
+            if (!jsonStr) { debugLog("Cont no JSON found, trying raw extraction"); var contP = _contParagraphs.length > 0 ? _contParagraphs : extractParagraphsFromRaw(raw); _useStreamedFallback(summary, contP, callback); return; }
             var data = JSON.parse(jsonStr);
             debugLog("Cont parsed OK, hasContent:" + !!(data.content || data.text));
             callback(data);
-          } catch(e) { debugLog("Cont parse error:" + e.message + ", using fallback"); _useStreamedFallback(summary, _contParagraphs, callback); }
+          } catch(e) { debugLog("Cont parse error:" + e.message + ", trying raw extraction"); var contP2 = _contParagraphs.length > 0 ? _contParagraphs : extractParagraphsFromRaw(raw); _useStreamedFallback(summary, contP2, callback); }
         },
-        function(e) { debugLog("Cont stream error:" + (e && e.message ? e.message : String(e)) + ", using fallback"); _useStreamedFallback(summary, _contParagraphs, callback); }
+        function(e) { debugLog("Cont stream error:" + (e && e.message ? e.message : String(e)) + ", trying raw extraction"); var contP3 = _contParagraphs.length > 0 ? _contParagraphs : extractParagraphsFromRaw(""); _useStreamedFallback(summary, contP3, callback); }
       );
     };
     var attachMem = shouldAttachMemory();
