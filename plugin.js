@@ -417,6 +417,15 @@
       "【重要：单章节输出要求】",
       "你每次只输出一个章节的内容。不要将故事拆分成多个章节。将所有内容写在一个章节中，通过场景转换、时间跳跃等叙事手法自然过渡。如果故事较长，用空行或「※」分隔不同场景，而不是拆成多个chapter。",
       "",
+      "<Language_Match>",
+      "<rule name=\"Auto-match Spoken Language\">",
+      "The language you speak must automatically match your nationality, upbringing background, and the language habits specified in your character setting.",
+      "If you are French, you speak French. If you are American, you speak English. If your setting mentions a customary language for communication, use that language. If your setting dictates language switching in specific contexts, execute those switches accordingly.",
+      "Whenever you speak a language other than Chinese, you must immediately append an accurate Chinese translation in parentheses right after the dialogue sentence. For example: \"I love you.（我爱你）\", \"Je t'aime.（我爱你）\"",
+      "Translations must be natural, highly accurate, and perfectly retain the original meaning. This rule applies strictly to dialogues; narrative text must always remain in Chinese.",
+      "</rule>",
+      "</Language_Match>",
+      "",
       "【输出格式】",
       "请返回纯JSON格式：",
       '{ "inline_checks": [{ "intent": "", "vibe_match": "", "scan_result": "", "paragraph_text": "" }], "chapter": { "title": "", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "continuation_summary": "", "brief_summary": "" }',
@@ -670,6 +679,15 @@
       "",
       "[Single-Chapter Output: Write all content in one chapter. Use scene transitions, time jumps, and '※' separators rather than splitting into multiple chapters.]",
       "",
+      "<Language_Match>",
+      "<rule name=\"Auto-match Spoken Language\">",
+      "The language you speak must automatically match your nationality, upbringing background, and the language habits specified in your character setting.",
+      "If you are French, you speak French. If you are American, you speak English. If your setting mentions a customary language for communication, use that language. If your setting dictates language switching in specific contexts, execute those switches accordingly.",
+      "Whenever you speak a language other than Chinese, you must immediately append an accurate Chinese translation in parentheses right after the dialogue sentence. For example: \"I love you.（我爱你）\", \"Je t'aime.（我爱你）\"",
+      "Translations must be natural, highly accurate, and perfectly retain the original meaning. This rule applies strictly to dialogues; narrative text must always remain in Chinese.",
+      "</rule>",
+      "</Language_Match>",
+      "",
       "[Output Format]",
       "请返回纯JSON格式：",
       "{ \"inline_checks\": [{ \"intent\": \"\", \"vibe_match\": \"\", \"scan_result\": \"\", \"paragraph_text\": \"\" }], \"chapter\": { \"title\": \"\", \"content\": [{ \"type\": \"p|dialogue|narrator\", \"text\": \"\" }] }, \"continuation_summary\": \"\", \"brief_summary\": \"\" }",
@@ -756,6 +774,20 @@
     var div = document.createElement("div");
     div.appendChild(document.createTextNode(text));
     return div.innerHTML;
+  }
+  /* 富文本渲染：双引号加粗斜体、翻译语言样式 */
+  function renderRichText(text) {
+    if (!text) return "";
+    var html = escapeHtml(text);
+    /* 双引号内容加粗斜体：「」和"" */
+    html = html.replace(/([\u300c\u201c\u201d"])([\s\S]*?)([\u300d\u201c\u201d"])/g, function(match, open, content, close) {
+      return '<em style="font-weight:600;font-style:italic;color:var(--text-primary)">' + open + content + close + '</em>';
+    });
+    /* 翻译语言：括号内含外文（连续拉丁字母+空格组合）后跟中文翻译 */
+    html = html.replace(/([A-Za-z][A-Za-z\s,;:.!?'\-]{2,}?)(\uff08|\()([\s\S]*?)(\uff09|\))/g, function(match, foreign, openBracket, translation, closeBracket) {
+      return '<span style="font-style:italic;color:var(--text-secondary);letter-spacing:0.5px">' + foreign + '</span>' + openBracket + translation + closeBracket;
+    });
+    return html;
   }
   function generateId() { return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 8); }
   function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -1696,7 +1728,7 @@
     '.' + ROOT_CLASS + ' .hp-reader-author-note-quote{position:absolute;top:-4px;left:10px;font-size:48px;color:var(--primary-light);font-family:Georgia,serif;line-height:1;opacity:0.6}' +
     '.' + ROOT_CLASS + ' .hp-reader-author-note-text{font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.8;padding-top:12px}' +
     '.' + ROOT_CLASS + ' .hp-reader-chapter-title{font-size:18px;font-weight:700;text-align:center;padding:24px 0 16px;color:var(--primary-dark)}' +
-    '.' + ROOT_CLASS + ' .hp-reader-text{font-family:Georgia,"Noto Serif SC","Songti SC",serif;line-height:2.0;margin-bottom:12px;color:var(--text-primary);text-align:justify}' +
+    '.' + ROOT_CLASS + ' .hp-reader-text{font-family:Georgia,"Noto Serif SC","Songti SC",serif;line-height:2.0;margin-bottom:24px;color:var(--text-primary);text-align:justify}' +
     '.' + ROOT_CLASS + ' .hp-reader-action-bar{display:flex;align-items:center;justify-content:space-around;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-top:1px solid var(--bg-secondary);position:sticky;bottom:0}' +
     '.' + ROOT_CLASS + ' .hp-action-btn{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--text-secondary);font-size:11px;padding:4px 12px;transition:color .2s}' +
     '.' + ROOT_CLASS + ' .hp-action-btn:hover{color:var(--primary-dark)}' +
@@ -1835,7 +1867,7 @@
       '.' + ROOT_CLASS + ' .hp-card-excerpt{font-size:12px;-webkit-line-clamp:2}' +
       '.' + ROOT_CLASS + ' .hp-tag-cp,.hp-tag-trope{padding:6px 12px;font-size:12px;margin:3px}' +
       '.' + ROOT_CLASS + ' .hp-tag-section-title{font-size:13px;padding:12px 12px 4px}' +
-      '.' + ROOT_CLASS + ' .hp-reader-text{font-size:15px !important;line-height:1.9}' +
+      '.' + ROOT_CLASS + ' .hp-reader-text{line-height:1.9}' +
       '.' + ROOT_CLASS + ' .hp-action-btn svg{width:18px;height:18px}' +
       '.' + ROOT_CLASS + ' .hp-action-btn{padding:3px 8px;font-size:10px}' +
       '.' + ROOT_CLASS + ' .hp-refresh-bar{padding:10px 12px;font-size:12px}' +
@@ -1913,7 +1945,10 @@
 
   /* ─── 页面渲染 ─── */
   function renderApp() {
+    /* 安全检查：确保 window.__hofter 始终可用 */
+    if (!window.__hofter) { _hofterAPI = createHofterAPI(); window.__hofter = _hofterAPI; console.log('[hofter] renderApp: recreated __hofter'); }
     var el = state.containerEl;
+    if (!el) { console.log('[hofter] renderApp: containerEl is null, aborting'); return; }
     el.innerHTML = "";
     el.className = ROOT_CLASS;
     if (state.settings.theme === "dark") el.classList.add("hp-dark");
@@ -2807,12 +2842,14 @@
         var annotations = fc.annotations || [];
         for (var a = 0; a < annotations.length; a++) { if (annotations[a].paragraphIndex === paraIdx) { hasAnnotation = true; annotationForPara = annotations[a]; break; } }
         var pStyle = "font-size:" + state.fontSize + "px";
+        /* 根据段落类型决定样式 */
         if (para.type === "dialogue") {
-          html += '<div class="hp-reader-text" style="' + pStyle + ';padding-left:16px;border-left:3px solid var(--primary-light)">';
+          /* 对话：粉色左边框 + 粉色背景 */
+          html += '<div class="hp-reader-text" style="' + pStyle + ';padding-left:16px;border-left:3px solid #E8A0BF;background:linear-gradient(90deg,rgba(232,160,191,0.08),transparent);padding:8px 12px 8px 16px;border-radius:0 8px 8px 0">';
         } else {
           html += '<div class="hp-reader-text" style="' + pStyle + '">';
         }
-        html += escapeHtml(para.text || "");
+        html += renderRichText(para.text || "");
         if (hasAnnotation) {
           html += ' <span style="display:inline-flex;align-items:center;cursor:pointer;color:var(--primary);margin-left:4px" onclick="window.__hofter.showAnnotationPanel(' + paraIdx + ')">' + ICONS.comment.replace(/24/g,"14") + '<span style="font-size:10px;margin-left:2px">' + (annotationForPara.notes ? annotationForPara.notes.length : 0) + '</span></span>';
         }
@@ -2854,9 +2891,30 @@
     if (comments.length === 0 && annotations.length === 0) {
       html += '<div style="text-align:center;padding:20px;color:var(--text-hint);font-size:13px"><p>\u8fd8\u6ca1\u6709\u8bc4\u8bba</p><p style="font-size:12px;margin-top:4px">\u70b9\u51fb\u53f3\u4e0a\u89d2\u5237\u65b0\u6309\u94ae\u751f\u6210\u8bc4\u8bba</p></div>';
     }
+    /* 嵌套评论渲染：先构建树结构，再递归渲染 */
+    var topLevel = [];
+    var repliesMap = {};
     for (var i = 0; i < comments.length; i++) {
       var c = comments[i];
-      html += '<div class="hp-comment-item"><div class="hp-comment-avatar">' + (c.name||"?")[0] + '</div><div class="hp-comment-body"><div class="hp-comment-name">' + escapeHtml(c.name||"\u533f\u540d") + '</div><div class="hp-comment-text">' + escapeHtml(c.text||"") + '</div><div class="hp-comment-time">' + escapeHtml(c.time||"") + '<span class="hp-comment-report" onclick="window.__hofter.reportComment(this)">\u4e3e\u62a5</span></div></div></div>';
+      if (!c.replyTo) {
+        topLevel.push(c);
+      } else {
+        if (!repliesMap[c.replyTo]) repliesMap[c.replyTo] = [];
+        repliesMap[c.replyTo].push(c);
+      }
+    }
+    function renderCommentNode(comment, depth) {
+      var indent = depth > 0 ? 'margin-left:' + (depth * 28) + 'px;padding-left:8px;border-left:2px solid var(--primary-light)' : '';
+      var replyLabel = comment.replyTo ? '<span style="font-size:11px;color:var(--primary);margin-right:4px">\u56de\u590d ' + escapeHtml(comment.replyTo) + '</span>' : '';
+      var h = '<div class="hp-comment-item" style="' + indent + '"><div class="hp-comment-avatar">' + (comment.name||"?")[0] + '</div><div class="hp-comment-body"><div class="hp-comment-name">' + replyLabel + escapeHtml(comment.name||"\u533f\u540d") + '</div><div class="hp-comment-text">' + escapeHtml(comment.text||"") + '</div><div class="hp-comment-time">' + escapeHtml(comment.time||"") + '<span class="hp-comment-report" onclick="window.__hofter.reportComment(this)">\u4e3e\u62a5</span></div></div></div>';
+      var replies = repliesMap[comment.name] || [];
+      for (var r = 0; r < replies.length; r++) {
+        h += renderCommentNode(replies[r], depth + 1);
+      }
+      return h;
+    }
+    for (var t = 0; t < topLevel.length; t++) {
+      html += renderCommentNode(topLevel[t], 0);
     }
     html += '<div style="padding:12px 0"><div style="display:flex;gap:8px"><input class="hp-input" id="hp-comment-input" placeholder="\u5199\u8bc4\u8bba..." style="flex:1"><button class="hp-btn hp-btn-primary hp-btn-sm" onclick="window.__hofter.submitComment()">\u53d1\u9001</button></div></div></div>';
     return html;
@@ -2936,7 +2994,8 @@
   }
 
   /* ─── 全局方法注册 ─── */
-  window.__hofter = {
+  function createHofterAPI() {
+    return {
     switchPage: function(page) { state.currentPage = page; renderApp(); },
     switchHomeTab: function(tab) { state.homeTab = tab; renderApp(); },
     switchDiscoverTab: function(tab) {
@@ -3768,6 +3827,18 @@
       } else { showToast("\u672a\u9009\u62e9\u65b0\u6807\u7b7e"); }
     }
   };
+  }
+
+  var _hofterAPI = createHofterAPI();
+
+  /* 使用 Object.defineProperty 让 window.__hofter 成为自恢复属性 */
+  /* 即使被 delete，下次访问也会自动重建 */
+  Object.defineProperty(window, '__hofter', {
+    get: function() { if (!_hofterAPI) _hofterAPI = createHofterAPI(); return _hofterAPI; },
+    set: function(val) { _hofterAPI = val; },
+    configurable: true,
+    enumerable: true
+  });
 
   /* ─── 插件注册 ─── */
   window.RochePlugin.register({
@@ -3781,9 +3852,30 @@
         icon: "extension",
         iconImage: "",
         mount: function(container, roche) {
+          console.log('[hofter] mount called, container:', !!container, 'roche:', !!roche, '__hofter before:', !!window.__hofter);
           state.roche = roche;
           state.containerEl = container;
-          state.fontSize = 17;
+          state.fontSize = state.settings.fontSize || 17;
+          state.isLoading = false;
+
+          /* 无条件重建 window.__hofter，确保 onclick 处理器可用 */
+          _hofterAPI = createHofterAPI();
+          /* 重新定义 getter，防止被外部 delete 后失效 */
+          try {
+            Object.defineProperty(window, '__hofter', {
+              get: function() { if (!_hofterAPI) _hofterAPI = createHofterAPI(); return _hofterAPI; },
+              set: function(val) { _hofterAPI = val; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch(e) {
+            window.__hofter = _hofterAPI;
+          }
+          console.log('[hofter] __hofter after mount:', !!window.__hofter, 'keys:', Object.keys(window.__hofter).length);
+
+          /* 清理旧的style标签，避免重复 */
+          var oldStyle = document.querySelector('style[data-hofter-style="1"]');
+          if (oldStyle) oldStyle.parentNode.removeChild(oldStyle);
 
           var styleEl = document.createElement("style");
           styleEl.textContent = getStyles();
@@ -3819,21 +3911,28 @@
                 }
               }
               if (state.settings.fontSize) state.fontSize = state.settings.fontSize;
+              console.log('[hofter] loadData done, calling renderApp, __hofter:', !!window.__hofter, 'containerEl:', !!state.containerEl);
               renderApp();
-            }).catch(function() { renderApp(); });
+            }).catch(function() { console.log('[hofter] loadData FAILED, calling renderApp anyway'); renderApp(); });
           };
 
           loadData();
         },
         unmount: function(container) {
+          console.log('[hofter] unmount called, __hofter:', !!window.__hofter);
           if (state.styleEl && state.styleEl.parentNode) state.styleEl.parentNode.removeChild(state.styleEl);
           for (var i = 0; i < state.eventListeners.length; i++) {
             var ev = state.eventListeners[i];
             ev.el.removeEventListener(ev.type, ev.fn);
           }
           state.eventListeners = [];
+          /* 清理 document.body 上残留的 hofter 相关元素 */
+          var bodyLeftovers = document.querySelectorAll('#hp-debug-panel, #annotation-panel, #hp-context-panel');
+          for (var bi = 0; bi < bodyLeftovers.length; bi++) { if (bodyLeftovers[bi].parentNode) bodyLeftovers[bi].parentNode.removeChild(bodyLeftovers[bi]); }
           if (container) container.innerHTML = "";
-          delete window.__hofter;
+          console.log('[hofter] unmount done, __hofter still exists:', !!window.__hofter);
+          /* 不再 delete window.__hofter，避免重进时 onclick 失效 */
+          /* mount 时会无条件重建 */
         }
       }
     ]
