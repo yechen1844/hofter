@@ -728,35 +728,38 @@
             cleaned = cleaned.replace(/<system_execution_directive>[\s\S]*?<\/system_execution_directive>/gi, "");
             cleaned = cleaned.replace(/<!--[\s\S]*?-->/g, "");
             cleaned = cleaned.replace(/<[^>]+>/g, "");
-            var displayHtml = "";
+            /* 提取所有文本段落 */
+            var allTexts = [];
             var chapterMatch = cleaned.match(/"chapter"\s*:\s*\{[\s\S]*?"content"\s*:\s*\[([\s\S]*)/);
             if (chapterMatch) {
               var contentStr = chapterMatch[1];
               var textParts = contentStr.split(/"text"\s*:\s*"/);
               for (var pi = 1; pi < textParts.length; pi++) {
                 var textPart = textParts[pi].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
-                if (textPart.trim()) {
-                  displayHtml += '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary)">' + escapeHtml(textPart.trim()) + '</div>';
-                }
+                if (textPart.trim()) allTexts.push(textPart.trim());
               }
             }
-            if (!displayHtml && cleaned.trim().length > 20) {
+            if (allTexts.length === 0 && cleaned.trim().length > 20) {
               var afterJson = cleaned.replace(/^\s*\{/, "");
               var simpleTexts = afterJson.split(/"text"\s*:\s*"/);
-              if (simpleTexts.length > 1) {
-                for (var si = 1; si < simpleTexts.length; si++) {
-                  var st = simpleTexts[si].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
-                  if (st.trim().length > 10) {
-                    displayHtml += '<div style="font-size:' + (state.settings.fontSize || 16) + 'px;line-height:1.8;margin:8px 0;color:var(--text-primary)">' + escapeHtml(st.trim()) + '</div>';
-                  }
-                }
+              for (var si = 1; si < simpleTexts.length; si++) {
+                var st = simpleTexts[si].replace(/"\s*[,}].*/, "").replace(/\\"/g, '"').replace(/\\n/g, "<br>");
+                if (st.trim().length > 10) allTexts.push(st.trim());
               }
             }
-            if (displayHtml) {
-              streamEl.innerHTML = displayHtml;
-              var contentEl = document.getElementById("hp-reader-content");
-              if (contentEl) contentEl.scrollTop = contentEl.scrollHeight;
+            /* 增量渲染：只追加新段落，避免全量替换导致闪烁 */
+            var currentCount = streamEl.children.length;
+            var fs = state.settings.fontSize || 16;
+            for (var ai = currentCount; ai < allTexts.length; ai++) {
+              var paraDiv = document.createElement("div");
+              paraDiv.className = "hp-stream-para";
+              paraDiv.style.cssText = "font-size:" + fs + "px;line-height:1.8;margin:8px 0;color:var(--text-primary)";
+              paraDiv.textContent = allTexts[ai];
+              streamEl.appendChild(paraDiv);
             }
+            /* 平滑滚动到底部 */
+            var contentEl = document.getElementById("hp-reader-content");
+            if (contentEl) contentEl.scrollTop = contentEl.scrollHeight;
           }
         },
         function(raw) {
@@ -903,21 +906,23 @@
   function getStyles() {
     return '.' + ROOT_CLASS + '{position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-primary);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;overflow:hidden;--primary:#E8A0BF;--primary-light:#F0C4D8;--primary-dark:#C084B0;--primary-gradient:linear-gradient(135deg,#E8A0BF,#C084B0,#9B7EB8);--bg-primary:#FAFAF9;--bg-card:#FFFFFF;--bg-secondary:#F5F3F1;--text-primary:#3D3340;--text-secondary:#7A6F7D;--text-hint:#B8ADB8;--like-red:#E85A6B;--comment-blue:#6BA8E8;--star-gold:#E8C46B;--glass-bg:rgba(250,249,249,0.72);--glass-blur:blur(20px);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px}' +
     '.' + ROOT_CLASS + ' *{box-sizing:border-box;margin:0;padding:0}' +
-    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);position:sticky;top:0;z-index:100;min-height:48px}' +
-    '.' + ROOT_CLASS + ' .hp-header-title{font-size:17px;font-weight:700;text-align:center;flex:1}' +
-    '.' + ROOT_CLASS + ' .hp-header-left,' + '.' + ROOT_CLASS + ' .hp-header-right{display:flex;align-items:center;gap:8px;min-width:60px}' +
+    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);position:sticky;top:0;z-index:100;min-height:48px;max-height:64px;overflow:hidden;gap:4px}' +
+    '.' + ROOT_CLASS + ' .hp-header-title{font-size:17px;font-weight:700;text-align:center;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}' +
+    '.' + ROOT_CLASS + ' .hp-header-left,' + '.' + ROOT_CLASS + ' .hp-header-right{display:flex;align-items:center;gap:4px;min-width:auto;max-width:40%;flex-shrink:0}' +
     '.' + ROOT_CLASS + ' .hp-header-right{justify-content:flex-end}' +
-    '.' + ROOT_CLASS + ' .hp-icon-btn{width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--text-primary);transition:background .2s;position:relative}' +
+    '.' + ROOT_CLASS + ' .hp-icon-btn{width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;color:var(--text-primary);transition:background .2s,transform .1s;position:relative;-webkit-user-select:none;user-select:none}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn:hover{background:var(--bg-secondary)}' +
-    '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:22px;height:22px}' +
+    '.' + ROOT_CLASS + ' .hp-icon-btn:active{transform:scale(.92)}' +
+    '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0}' +
     '.' + ROOT_CLASS + ' .hp-tabs{display:flex;border-bottom:1px solid var(--bg-secondary);background:var(--bg-card);position:sticky;top:48px;z-index:99}' +
     '.' + ROOT_CLASS + ' .hp-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text-secondary);cursor:pointer;position:relative;transition:color .2s}' +
     '.' + ROOT_CLASS + ' .hp-tab.active{color:var(--primary-dark);font-weight:600}' +
     '.' + ROOT_CLASS + ' .hp-tab.active::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:3px;background:var(--primary-gradient);border-radius:2px}' +
-    '.' + ROOT_CLASS + ' .hp-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:70px}' +
+    '.' + ROOT_CLASS + ' .hp-content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:70px;scroll-behavior:smooth}' +
     '.' + ROOT_CLASS + ' .hp-card-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 16px}' +
-    '.' + ROOT_CLASS + ' .hp-card{background:var(--bg-card);border-radius:var(--radius-md);overflow:hidden;box-shadow:0 2px 8px rgba(61,51,64,0.06);cursor:pointer;transition:transform .2s,box-shadow .2s}' +
+    '.' + ROOT_CLASS + ' .hp-card{background:var(--bg-card);border-radius:var(--radius-md);overflow:hidden;box-shadow:0 2px 8px rgba(61,51,64,0.06);cursor:pointer;transition:transform .2s,box-shadow .2s;-webkit-user-select:none;user-select:none}' +
     '.' + ROOT_CLASS + ' .hp-card:hover{transform:translateY(-2px);box-shadow:0 4px 16px rgba(232,160,191,0.15)}' +
+    '.' + ROOT_CLASS + ' .hp-card:active{transform:scale(.98);transition:transform .1s}' +
     '.' + ROOT_CLASS + ' .hp-card-cover{height:110px;display:flex;align-items:flex-end;padding:10px;position:relative}' +
     '.' + ROOT_CLASS + ' .hp-card-cover::after{content:"";position:absolute;bottom:0;left:0;right:0;height:60%;background:linear-gradient(transparent,rgba(0,0,0,0.5));pointer-events:none}' +
     '.' + ROOT_CLASS + ' .hp-card-cover-title{font-size:14px;font-weight:700;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,0.3);line-height:1.3;position:relative;z-index:1}' +
@@ -969,7 +974,7 @@
     '.' + ROOT_CLASS + ' .hp-textarea:focus{border-color:var(--primary)}' +
     '.' + ROOT_CLASS + ' .hp-badge{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;border-radius:9px;background:var(--like-red);color:#fff;font-size:10px;font-weight:600;padding:0 5px}' +
     '.' + ROOT_CLASS + ' .hp-section-title{font-size:16px;font-weight:700;padding:16px 16px 8px;color:var(--text-primary)}' +
-    '.' + ROOT_CLASS + ' .hp-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(250,249,249,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500}' +
+    '.' + ROOT_CLASS + ' .hp-loading-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500}' +
     '.' + ROOT_CLASS + ' .hp-spinner{width:32px;height:32px;border:3px solid var(--bg-secondary);border-top-color:var(--primary);border-radius:50%;animation:hpSpin .8s linear infinite}' +
     '.' + ROOT_CLASS + ' .hp-onboarding{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);display:flex;flex-direction:column;z-index:400}' +
     '.' + ROOT_CLASS + ' .hp-onboarding-header{padding:40px 24px 20px;text-align:center}' +
@@ -1083,6 +1088,20 @@
     '.' + ROOT_CLASS + ' .hp-refresh-bar:hover{color:var(--primary-dark)}' +
     '.' + ROOT_CLASS + ' .hp-refresh-bar svg{width:16px;height:16px}' +
     '.' + ROOT_CLASS + ' .hp-pull-indicator{text-align:center;padding:8px 0;font-size:12px;color:var(--text-hint);transition:opacity .3s}' +
+    /* ── 标签分类样式：CP标签 vs 梗标签 ── */
+    '.' + ROOT_CLASS + ' .hp-tag-cp{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border-radius:9999px;font-size:13px;cursor:pointer;transition:all .2s;margin:4px;border:1.5px solid var(--primary-light);background:linear-gradient(135deg,rgba(232,160,191,0.08),rgba(192,132,176,0.06));color:var(--primary-dark);font-weight:500}' +
+    '.' + ROOT_CLASS + ' .hp-tag-cp:hover{border-color:var(--primary);background:rgba(232,160,191,0.14);transform:translateY(-1px);box-shadow:0 2px 8px rgba(232,160,191,0.2)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-cp:active{transform:scale(.96)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-trope{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border-radius:9999px;font-size:13px;cursor:pointer;transition:all .2s;margin:4px;border:1.5px solid var(--bg-secondary);background:var(--bg-card)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-trope:hover{border-color:var(--primary);background:rgba(232,160,191,0.06)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-trope:active{transform:scale(.96)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-section-title{font-size:14px;font-weight:700;padding:14px 16px 6px;color:var(--primary-dark);display:flex;align-items:center;gap:6px}' +
+    '.' + ROOT_CLASS + ' .hp-tag-section-title svg{width:16px;height:16px;flex-shrink:0}' +
+    /* ── 流式渲染动画 ── */
+    '@keyframes hpStreamFadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}' +
+    '.' + ROOT_CLASS + ' .hp-stream-para{animation:hpStreamFadeIn .25s ease forwards;opacity:0}' +
+    /* ── 防误触保护 ── */
+    '.' + ROOT_CLASS + ' .hp-touch-guard{pointer-events:none;position:absolute;top:0;left:0;right:0;bottom:0;z-index:50}' +
     '@keyframes hpSpin{to{transform:rotate(360deg)}}' +
     '@keyframes hpFadeIn{from{opacity:0}to{opacity:1}}' +
     '@keyframes hpSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}' +
@@ -1105,6 +1124,28 @@
       '.' + ROOT_CLASS + ' .hp-content{max-width:1200px}' +
       '.' + ROOT_CLASS + ' .hp-nav{max-width:1200px}' +
       '.' + ROOT_CLASS + ' .hp-profile-grid{grid-template-columns:1fr 1fr 1fr 1fr 1fr;max-width:960px}' +
+    '}' +
+    /* ── 移动端小屏适配 (<480px) ── */
+    '@media(max-width:479px){' +
+      '.' + ROOT_CLASS + ' .hp-header{padding:10px 12px;gap:2px}' +
+      '.' + ROOT_CLASS + ' .hp-header-title{font-size:16px}' +
+      '.' + ROOT_CLASS + ' .hp-icon-btn{width:32px;height:32px;min-width:32px;min-height:32px}' +
+      '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:20px;height:20px;max-width:20px;max-height:20px}' +
+      '.' + ROOT_CLASS + ' .hp-nav-item svg{width:20px;height:20px}' +
+      '.' + ROOT_CLASS + ' .hp-nav-publish{width:40px;height:40px}' +
+      '.' + ROOT_CLASS + ' .hp-nav-publish svg{width:22px;height:22px}' +
+      '.' + ROOT_CLASS + ' .hp-card-cover{height:100px}' +
+      '.' + ROOT_CLASS + ' .hp-card-body{padding:8px}' +
+      '.' + ROOT_CLASS + ' .hp-card-excerpt{font-size:12px;-webkit-line-clamp:2}' +
+      '.' + ROOT_CLASS + ' .hp-tag-cp,.hp-tag-trope{padding:6px 12px;font-size:12px;margin:3px}' +
+      '.' + ROOT_CLASS + ' .hp-tag-section-title{font-size:13px;padding:12px 12px 4px}' +
+      '.' + ROOT_CLASS + ' .hp-reader-text{font-size:15px !important;line-height:1.9}' +
+      '.' + ROOT_CLASS + ' .hp-action-btn svg{width:18px;height:18px}' +
+      '.' + ROOT_CLASS + ' .hp-action-btn{padding:3px 8px;font-size:10px}' +
+      '.' + ROOT_CLASS + ' .hp-refresh-bar{padding:10px 12px;font-size:12px}' +
+      '.' + ROOT_CLASS + ' .hp-explore-tag{padding:6px 12px;font-size:12px;margin:3px}' +
+      '.' + ROOT_CLASS + ' .hp-profile-avatar{width:56px;height:56px;font-size:24px}' +
+      '.' + ROOT_CLASS + ' .hp-profile-name{font-size:16px}' +
     '}';
   }
 
@@ -1311,16 +1352,34 @@
         container.appendChild(grid);
       }
     } else if (state.discoverTab === "hot") {
-      container.innerHTML += '<div class="hp-section-title">\u70ed\u95e8\u6807\u7b7e</div>';
-      var tagList = document.createElement("div"); tagList.className = "hp-tag-list";
-      var allTags = state.cpTags.concat(state.tropeTags);
-      for (var k = 0; k < allTags.length; k++) {
-        var tEl = document.createElement("div"); tEl.className = "hp-tag-item";
-        tEl.innerHTML = ICONS.trending.replace(/24/g,"14") + '<span>' + escapeHtml(allTags[k].name) + '</span>';
-        tEl.onclick = (function(tid) { return function() { window.__hofter.openTagPage(tid); }; })(allTags[k].id);
-        tagList.appendChild(tEl);
+      /* ── 热门标签：CP标签与梗标签分离展示 ── */
+      if (state.cpTags.length > 0) {
+        container.innerHTML += '<div class="hp-tag-section-title">' + ICONS.trending.replace(/24/g,"16") + ' CP\u6807\u7b7e</div>';
+        var cpTagList = document.createElement("div"); cpTagList.className = "hp-tag-list";
+        for (var ci = 0; ci < state.cpTags.length; ci++) {
+          var cpTag = state.cpTags[ci];
+          var cpEl = document.createElement("div"); cpEl.className = "hp-tag-cp";
+          cpEl.innerHTML = ICONS.sparkle.replace(/24/g,"14") + '<span>' + escapeHtml(cpTag.name) + '</span>';
+          cpEl.onclick = (function(tid){ return function(){ window.__hofter.openCpTagPage(tid); }; })(cpTag.id);
+          cpTagList.appendChild(cpEl);
+        }
+        container.appendChild(cpTagList);
       }
-      container.appendChild(tagList);
+      if (state.tropeTags.length > 0) {
+        container.innerHTML += '<div class="hp-tag-section-title">' + ICONS.tag.replace(/24/g,"16") + ' \u6897\u6807\u7b7e</div>';
+        var trTagList = document.createElement("div"); trTagList.className = "hp-tag-list";
+        for (var ti = 0; ti < state.tropeTags.length; ti++) {
+          var trTag = state.tropeTags[ti];
+          var trEl = document.createElement("div"); trEl.className = "hp-tag-trope";
+          trEl.innerHTML = '<span>' + escapeHtml(trTag.name) + '</span>';
+          trEl.onclick = (function(tid){ return function(){ window.__hofter.openTropeTagPage(tid); }; })(trTag.id);
+          trTagList.appendChild(trEl);
+        }
+        container.appendChild(trTagList);
+      }
+      if (state.cpTags.length === 0 && state.tropeTags.length === 0) {
+        container.innerHTML += '<div class="hp-empty">' + ICONS.tag + '<p>\u8fd8\u6ca1\u6709\u6807\u7b7e\uff0c\u53bb\u6807\u7b7e\u63a2\u7d22\u53d1\u73b0\u65b0\u6807\u7b7e</p></div>';
+      }
     } else if (state.discoverTab === "explore") {
       renderExploreTab(container);
     }
@@ -1399,37 +1458,101 @@
     for (var m = 0; m < menuItems.length; m++) { var mi = menuItems[m]; container.innerHTML += '<div class="hp-menu-item" onclick="window.__hofter.' + mi.act + '()">' + mi.icon + '<span>' + mi.name + '</span>' + ICONS.chevronRight.replace(/24/g,"16").replace("currentColor","var(--text-hint)") + '</div>'; }
   }
 
-  /* ─── Tag 专属页 ─── */
+  /* ─── Tag 专属页（CP标签 / 梗标签 分离逻辑） ─── */
+  var _tagPageType = ""; /* "cp" | "trope" */
+  var _tagClickTimer = null;
+
   function renderTagPage(container) {
     var tag = state.currentTagPage; if (!tag) return;
-    container.innerHTML = '<div class="hp-section-title">' + escapeHtml(tag.name) + ' \u7684\u540c\u4eba\u6587</div>';
-    var isCpTag = false;
-    for (var ci = 0; ci < state.cpTags.length; ci++) { if (state.cpTags[ci].id === tag.id) { isCpTag = true; break; } }
-    if (isCpTag) {
-      var items = [];
+    /* 判断标签类型 */
+    _tagPageType = "trope";
+    for (var ci = 0; ci < state.cpTags.length; ci++) { if (state.cpTags[ci].id === tag.id) { _tagPageType = "cp"; break; } }
+
+    container.innerHTML = "";
+    var headerInfo = document.createElement("div");
+    headerInfo.className = "hp-tag-section-title";
+    headerInfo.style.padding = "16px 16px 8px";
+    headerInfo.style.fontSize = "15px";
+    var typeLabel = _tagPageType === "cp" ? "CP\u6807\u7b7e" : "\u6897\u6807\u7b7e";
+    headerInfo.innerHTML = escapeHtml(tag.name) + ' <span style="font-size:12px;font-weight:400;color:var(--text-hint)">(' + typeLabel + ')</span>';
+    container.appendChild(headerInfo);
+
+    if (_tagPageType === "cp") {
+      /* CP标签规则：显示该CP相关内容 + 随机若干梗内容 */
+      var cpItems = [];
       for (var si = 0; si < state.summaries.length; si++) {
-        if (state.summaries[si].cpTagId === tag.id) items.push(state.summaries[si]);
+        if (state.summaries[si].cpTagId === tag.id) cpItems.push(state.summaries[si]);
       }
-      if (items.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u5185\u5bb9</p></div>'; return; }
-      var grid = document.createElement("div"); grid.className = "hp-card-grid";
-      for (var gi = 0; gi < items.length; gi++) grid.appendChild(createSummaryCard(items[gi]));
-      container.appendChild(grid);
+      if (cpItems.length > 0) {
+        var grid = document.createElement("div"); grid.className = "hp-card-grid"; grid.id = "hp-tag-grid";
+        for (var gi = 0; gi < cpItems.length; gi++) grid.appendChild(createSummaryCard(cpItems[gi]));
+        container.appendChild(grid);
+      }
+      /* 随机抽取含梗tag的摘要作为补充展示 */
+      var extraItems = [];
+      var shuffled = state.summaries.slice();
+      for (var ri = shuffled.length - 1; ri > 0; ri--) { var rj = Math.floor(Math.random() * (ri + 1)); var tmp = shuffled[ri]; shuffled[ri] = shuffled[rj]; shuffled[rj] = tmp; }
+      for (var ei = 0; ei < shuffled.length && extraItems.length < 3; ei++) {
+        if (shuffled[ei].cpTagId !== tag.id && shuffled[ei].tags && shuffled[ei].tags.length > 0) extraItems.push(shuffled[ei]);
+      }
+      if (extraItems.length > 0) {
+        container.innerHTML += '<div class="hp-tag-section-title" style="font-size:13px;color:var(--text-hint)">\u63a8\u8350\u6897\u6587</div>';
+        var exGrid = document.createElement("div"); exGrid.className = "hp-card-grid";
+        for (var exi = 0; exi < extraItems.length; exi++) exGrid.appendChild(createSummaryCard(extraItems[ei]));
+        container.appendChild(exGrid);
+      }
+      if (cpItems.length === 0 && extraItems.length === 0) {
+        container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u751f\u6210 ' + escapeHtml(tag.name) + ' \u540c\u4eba\u6587</p></div>';
+      }
     } else {
-      var items2 = [];
+      /* 梗标签规则：显示包含该梗的内容 + 随机不超过5个CP内容 */
+      var trItems = [];
       var tagName = tag.name;
       for (var si2 = 0; si2 < state.summaries.length; si2++) {
         var s = state.summaries[si2];
-        var tags = s.tags || [];
+        var stags = s.tags || [];
         var hasTag = false;
-        for (var ti = 0; ti < tags.length; ti++) { if (tags[ti] === tagName) { hasTag = true; break; } }
+        for (var ti = 0; ti < stags.length; ti++) { if (stags[ti] === tagName) { hasTag = true; break; } }
         if (!hasTag && s.tropeTags) { for (var ti2 = 0; ti2 < s.tropeTags.length; ti2++) { if (s.tropeTags[ti2] === tagName) { hasTag = true; break; } } }
-        if (hasTag) items2.push(s);
+        if (hasTag) trItems.push(s);
       }
-      if (items2.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.tag.replace(/24/g,"36").replace("currentColor","var(--text-hint)") + '<p>\u6682\u65e0\u5305\u542b\u6b64\u6807\u7b7e\u7684\u540c\u4eba\u6587</p><p style="font-size:13px;color:var(--text-hint)">\u5237\u65b0\u9996\u9875\u83b7\u53d6\u66f4\u591a\u5185\u5bb9</p></div>'; return; }
-      var grid2 = document.createElement("div"); grid2.className = "hp-card-grid";
-      for (var gi2 = 0; gi2 < items2.length; gi2++) grid2.appendChild(createSummaryCard(items2[gi2]));
-      container.appendChild(grid2);
+      if (trItems.length > 0) {
+        var trGrid = document.createElement("div"); trGrid.className = "hp-card-grid"; trGrid.id = "hp-tag-grid";
+        for (var tgi = 0; tgi < trItems.length; tgi++) trGrid.appendChild(createSummaryCard(trItems[tgi]));
+        container.appendChild(trGrid);
+      }
+      /* 随机不超过5个CP的摘要 */
+      var cpExtra = [];
+      var cpShuffle = state.summaries.slice();
+      for (var ci2 = cpShuffle.length - 1; ci2 > 0; ci2--) { var cj = Math.floor(Math.random() * (ci2 + 1)); var ctmp = cpShuffle[ci2]; cpShuffle[ci2] = cpShuffle[cj]; cpShuffle[cj] = ctmp; }
+      for (var cei = 0; cei < cpShuffle.length && cpExtra.length < 5; cei++) {
+        var cs = cpShuffle[cei];
+        var cHasTag = false;
+        var cstags = cs.tags || [];
+        for (var cti = 0; cti < cstags.length; cti++) { if (cstags[cti] === tagName) { cHasTag = true; break; } }
+        if (!cHasTag && cs.cpTagId) cpExtra.push(cs);
+      }
+      if (cpExtra.length > 0) {
+        container.innerHTML += '<div class="hp-tag-section-title" style="font-size:13px;color:var(--text-hint)">\u76f8\u5173CP\u63a8\u8350</div>';
+        var ceGrid = document.createElement("div"); ceGrid.className = "hp-card-grid";
+        for (var cei2 = 0; cei2 < cpExtra.length; cei2++) ceGrid.appendChild(createSummaryCard(cpExtra[cei2]));
+        container.appendChild(ceGrid);
+      }
+      if (trItems.length === 0 && cpExtra.length === 0) {
+        container.innerHTML += '<div class="hp-empty">' + ICONS.tag.replace(/24/g,"36").replace("currentColor","var(--text-hint)") + '<p>\u6682\u65e0\u5305\u542b\u6b64\u6807\u7b7e\u7684\u540c\u4eba\u6587</p><p style="font-size:13px;color:var(--text-hint)">\u5237\u65b0\u9996\u9875\u83b7\u53d6\u66f4\u591a\u5185\u5bb9</p></div>';
+      }
     }
+
+    /* 为标签页启用下拉刷新 */
+    var contentEl = document.getElementById("hp-main-content");
+    if (contentEl) initPullToRefresh(contentEl);
+  }
+
+  /* 防误触：快速连续点击保护 */
+  function guardedTagAction(fn) {
+    if (_tagClickTimer) return;
+    fn();
+    _tagClickTimer = setTimeout(function() { _tagClickTimer = null; }, 300);
   }
 
   /* ─── 开屏引导 ─── */
@@ -1581,6 +1704,7 @@
         for (var k = 0; k < state.summaries.length; k++) {
           if (!newIds[state.summaries[k].id]) existing.push(state.summaries[k]);
         }
+        /* 追加到顶部：新内容在前，旧内容在后 */
         state.summaries = summaries.concat(existing);
         saveSummariesCache(state.summaries);
         renderApp();
@@ -2066,6 +2190,18 @@
     },
     openTagPageById: function(tagId) { window.__hofter.openTagPage(tagId); },
     goBackFromTag: function() { state.currentTagPage = null; state.currentPage = "home"; renderApp(); },
+    openCpTagPage: function(tagId) {
+      guardedTagAction(function() {
+        for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].id === tagId) { state.currentTagPage = state.cpTags[i]; break; } }
+        if (state.currentTagPage) { state.currentPage = "tagPage"; renderApp(); }
+      });
+    },
+    openTropeTagPage: function(tagId) {
+      guardedTagAction(function() {
+        for (var j = 0; j < state.tropeTags.length; j++) { if (state.tropeTags[j].id === tagId) { state.currentTagPage = state.tropeTags[j]; break; } }
+        if (state.currentTagPage) { state.currentPage = "tagPage"; renderApp(); }
+      });
+    },
     toggleCpMode: function() { state.settings.cpMode = state.settings.cpMode === "unrestricted" ? "default" : "unrestricted"; saveSettings(state.settings); showSettings(); },
     setMemoryProb: function(val) { state.settings.memoryAttachProbability = parseInt(val, 10); saveSettings(state.settings); },
     setWordCountMin: function(val) { state.settings.wordCountMin = parseInt(val, 10) || 3000; saveSettings(state.settings); },
@@ -2396,7 +2532,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.6.1",
+    version: "1.7.0",
     apps: [
       {
         id: "hofter-home",
