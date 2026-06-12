@@ -421,7 +421,7 @@
       "请返回纯JSON格式：",
       '{ "inline_checks": [{ "intent": "", "vibe_match": "", "scan_result": "", "paragraph_text": "" }], "chapter": { "title": "", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "annotations": [{ "paragraphIndex": 0, "quotes": "", "notes": [{ "name": "", "text": "" }] }], "continuation_summary": "", "brief_summary": "" }',
       "",
-      "其中 inline_checks 是每段的内联自检记录，每生成一段正文前必须先写一条对应的inline_check。continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。brief_summary 是50字以内的极简摘要，用于动态发布和分享时展示，要求一句话概括核心看点，吸引人点击阅读。",
+      "其中 inline_checks 是每段的内联自检记录，每生成一段正文前必须先写一条对应的inline_check。annotations 是段评（划线评），quotes引用原文中的句子，notes是读者（同人女）对这句话的评论——注意：notes必须是读者的反应（磕糖、尖叫、分析、吐槽），绝不可写成角色解析、创作旁白或叙述者批注。continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。brief_summary 是50字以内的极简摘要，用于动态发布和分享时展示，要求一句话概括核心看点，吸引人点击阅读。",
       "字数要求：[WORD_COUNT_PLACEHOLDER]",
       "",
       "<system_execution_directive>",
@@ -820,7 +820,7 @@
       "请返回纯JSON格式：",
       '{ "inline_checks": [{ "intent": "", "vibe_match": "", "scan_result": "", "paragraph_text": "" }], "chapter": { "title": "", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "annotations": [{ "paragraphIndex": 0, "quotes": "", "notes": [{ "name": "", "text": "" }] }], "continuation_summary": "", "brief_summary": "" }',
       "",
-      "其中 inline_checks 是每段的内联自检记录，每生成一段正文前必须先写一条对应的inline_check。continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。brief_summary 是50字以内的极简摘要，用于动态发布和分享时展示，要求一句话概括核心看点，吸引人点击阅读。",
+      "其中 inline_checks 是每段的内联自检记录，每生成一段正文前必须先写一条对应的inline_check。annotations 是段评（划线评），quotes引用原文中的句子，notes是读者（同人女）对这句话的评论——注意：notes必须是读者的反应（磕糖、尖叫、分析、吐槽），绝不可写成角色解析、创作旁白或叙述者批注。continuation_summary 是150字左右的续写摘要，概括本篇内容与情感走向，供后续连载追更时作为上下文传入。brief_summary 是50字以内的极简摘要，用于动态发布和分享时展示，要求一句话概括核心看点，吸引人点击阅读。",
       "字数要求：[WORD_COUNT_PLACEHOLDER]",
       "",
       "<system_execution_directive>",
@@ -3819,14 +3819,14 @@
       if (!summary || !summary.fullContent) { showToast("\u65e0\u6cd5\u751f\u6210\u8bc4\u8bba"); return; }
       showLoading();
       var chaptersText = JSON.stringify(summary.fullContent.chapters || []);
-      generateLayer3Comments(chaptersText, function(result) {
+      generateLayer3Comments(chaptersText, function(comments, annotations) {
         hideLoading();
-        if (result && result.comments && result.comments.length > 0) {
-          summary.fullContent.comments = result.comments;
+        if (comments && comments.length > 0) {
+          summary.fullContent.comments = comments;
         }
-        if (result && result.annotations && result.annotations.length > 0) {
+        if (annotations && annotations.length > 0) {
           if (!summary.fullContent.annotations) summary.fullContent.annotations = [];
-          summary.fullContent.annotations = summary.fullContent.annotations.concat(result.annotations);
+          summary.fullContent.annotations = summary.fullContent.annotations.concat(annotations);
         }
         renderReaderContent(summary);
         showToast("\u8bc4\u8bba\u751f\u6210\u6210\u529f\uff01");
