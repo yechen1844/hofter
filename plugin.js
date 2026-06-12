@@ -779,19 +779,35 @@
   /* 富文本渲染：双引号加粗斜体、翻译语言样式 */
   function renderRichText(text) {
     if (!text) return "";
-    var html = escapeHtml(text);
-    /* 双引号内容加粗斜体：「」和""（escapeHtml后"变成&quot;） */
-    html = html.replace(/([\u300c])([\s\S]*?)([\u300d])/g, function(match, open, content, close) {
-      return '<em style="font-weight:600;font-style:italic;color:var(--text-primary)">' + open + content + close + '</em>';
+    /* 先在原始文本上标记需要特殊渲染的部分，用占位符保护 */
+    var placeholders = [];
+    function addPlaceholder(html) {
+      var idx = placeholders.length;
+      placeholders.push(html);
+      return "\x00" + idx + "\x01";
+    }
+    /* 1. 双引号内容：「」 */
+    var marked = text.replace(/[\u300c]([\s\S]*?)[\u300d]/g, function(match, content) {
+      return addPlaceholder('<em class="hp-dialogue">' + escapeHtml(match) + '</em>');
     });
-    html = html.replace(/(\u201c|&quot;)([\s\S]*?)(\u201d|&quot;)/g, function(match, open, content, close) {
-      return '<em style="font-weight:600;font-style:italic;color:var(--text-primary)">' + open + content + close + '</em>';
+    /* 2. 双引号内容："" 和 \u201c\u201d */
+    marked = marked.replace(/"([\s\S]*?)"/g, function(match, content) {
+      return addPlaceholder('<em class="hp-dialogue">' + escapeHtml(match) + '</em>');
     });
-    /* 翻译语言：括号内含外文（连续拉丁字母+空格组合）后跟中文翻译 */
-    html = html.replace(/([A-Za-z][A-Za-z\s,;:.!?'\-]{2,}?)(\uff08|\()([\s\S]*?)(\uff09|\))/g, function(match, foreign, openBracket, translation, closeBracket) {
-      return '<span style="font-style:italic;color:var(--text-secondary);letter-spacing:0.5px">' + foreign + '</span>' + openBracket + translation + closeBracket;
+    marked = marked.replace(/[\u201c]([\s\S]*?)[\u201d]/g, function(match, content) {
+      return addPlaceholder('<em class="hp-dialogue">' + escapeHtml(match) + '</em>');
     });
-    return html;
+    /* 3. 翻译语言：外文后跟中文翻译括号 */
+    marked = marked.replace(/([A-Za-z][A-Za-z\s,;:.!?'\-]{2,}?)(\uff08|\()([\s\S]*?)(\uff09|\))/g, function(match, foreign, openBracket, translation, closeBracket) {
+      return addPlaceholder('<span class="hp-foreign">' + escapeHtml(foreign) + '</span>' + escapeHtml(openBracket + translation + closeBracket));
+    });
+    /* 4. 对剩余文本做 escapeHtml */
+    var result = escapeHtml(marked);
+    /* 5. 还原占位符（占位符中的内容已经 escapeHtml 过了） */
+    result = result.replace(/\x00(\d+)\x01/g, function(m, idx) {
+      return placeholders[parseInt(idx)];
+    });
+    return result;
   }
   function generateId() { return "id-" + Date.now().toString(36) + "-" + Math.random().toString(36).substring(2, 8); }
   function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
@@ -1441,7 +1457,7 @@
               var paraDiv = document.createElement("div");
               paraDiv.className = "hp-stream-para";
               paraDiv.style.cssText = "font-size:" + fs + "px;line-height:1.8;margin:8px 0;color:var(--text-primary)";
-              paraDiv.textContent = allTexts[ai];
+              paraDiv.innerHTML = renderRichText(allTexts[ai]);
               streamEl.appendChild(paraDiv);
             }
             /* 平滑滚动到底部 */
@@ -1760,6 +1776,8 @@
     '.' + ROOT_CLASS + ' .hp-reader-author-note-text{font-size:13px;color:var(--text-secondary);font-style:italic;line-height:1.8;padding-top:12px}' +
     '.' + ROOT_CLASS + ' .hp-reader-chapter-title{font-size:18px;font-weight:700;text-align:center;padding:24px 0 16px;color:var(--primary-dark)}' +
     '.' + ROOT_CLASS + ' .hp-reader-text{font-family:Georgia,"Noto Serif SC","Songti SC",serif;line-height:2.0;margin-bottom:24px;color:var(--text-primary);text-align:justify}' +
+    '.' + ROOT_CLASS + ' .hp-dialogue{font-weight:600;font-style:italic}' +
+    '.' + ROOT_CLASS + ' .hp-foreign{font-style:italic;color:var(--text-secondary);letter-spacing:0.5px}' +
     '.' + ROOT_CLASS + ' .hp-reader-action-bar{display:flex;align-items:center;justify-content:space-around;padding:12px 16px;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-top:1px solid var(--bg-secondary);position:sticky;bottom:0}' +
     '.' + ROOT_CLASS + ' .hp-action-btn{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;color:var(--text-secondary);font-size:11px;padding:4px 12px;transition:color .2s}' +
     '.' + ROOT_CLASS + ' .hp-action-btn:hover{color:var(--primary-dark)}' +
