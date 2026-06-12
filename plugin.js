@@ -867,7 +867,7 @@
         function(raw) {
           debugLog("Cont stream done, raw len:" + raw.length + " first200:" + raw.substring(0, 200));
           try {
-            var jsonStr = stripXmlAndExtractJson(raw);
+            var extractResult = stripXmlAndExtractJson(raw); var jsonStr = extractResult.json;
             if (!jsonStr) { debugLog("Cont no JSON found"); callback(null); return; }
             var data = JSON.parse(jsonStr);
             debugLog("Cont parsed OK, hasContent:" + !!(data.content || data.text));
@@ -927,7 +927,7 @@
   function getStyles() {
     return '.' + ROOT_CLASS + '{position:relative;width:100%;height:100%;display:flex;flex-direction:column;background:var(--bg-primary);color:var(--text-primary);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:15px;overflow:hidden;--primary:#E8A0BF;--primary-light:#F0C4D8;--primary-dark:#C084B0;--primary-gradient:linear-gradient(135deg,#E8A0BF,#C084B0,#9B7EB8);--bg-primary:#FAFAF9;--bg-card:#FFFFFF;--bg-secondary:#F5F3F1;--text-primary:#3D3340;--text-secondary:#7A6F7D;--text-hint:#B8ADB8;--like-red:#E85A6B;--comment-blue:#6BA8E8;--star-gold:#E8C46B;--glass-bg:rgba(250,249,249,0.72);--glass-blur:blur(20px);--radius-sm:8px;--radius-md:12px;--radius-lg:16px;--radius-xl:20px}' +
     '.' + ROOT_CLASS + ' *{box-sizing:border-box;margin:0;padding:0}' +
-    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-primary);border-bottom:1px solid var(--bg-secondary);position:sticky;top:0;z-index:100;height:48px;overflow:hidden;gap:8px}' +
+    '.' + ROOT_CLASS + ' .hp-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--bg-primary);border-bottom:1px solid var(--bg-secondary);position:sticky;top:0;z-index:100;min-height:48px;flex-shrink:0;gap:8px}' +
     '.' + ROOT_CLASS + ' .hp-header-title{font-size:17px;font-weight:700;text-align:center;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;line-height:1.2}' +
     '.' + ROOT_CLASS + ' .hp-header-left,' + '.' + ROOT_CLASS + ' .hp-header-right{display:flex;align-items:center;gap:4px;flex-shrink:0}' +
     '.' + ROOT_CLASS + ' .hp-header-left:empty,' + '.' + ROOT_CLASS + ' .hp-header-right:empty{min-width:0;width:0;padding:0;gap:0}' +
@@ -937,7 +937,7 @@
     '.' + ROOT_CLASS + ' .hp-icon-btn:hover{background:var(--bg-secondary)}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn:active{transform:scale(.92)}' +
     '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:22px;height:22px;max-width:22px;max-height:22px;flex-shrink:0}' +
-    '.' + ROOT_CLASS + ' .hp-tabs{display:flex;border-bottom:1px solid var(--bg-secondary);background:var(--bg-card);position:sticky;top:48px;z-index:99}' +
+    '.' + ROOT_CLASS + ' .hp-tabs{display:flex;border-bottom:1px solid var(--bg-secondary);background:var(--bg-card);position:sticky;top:0;z-index:99}' +
     '.' + ROOT_CLASS + ' .hp-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text-secondary);cursor:pointer;position:relative;transition:color .2s}' +
     '.' + ROOT_CLASS + ' .hp-tab.active{color:var(--primary-dark);font-weight:600}' +
     '.' + ROOT_CLASS + ' .hp-tab.active::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:24px;height:3px;background:var(--primary-gradient);border-radius:2px}' +
@@ -1066,7 +1066,7 @@
     '.' + ROOT_CLASS + ' .hp-msg-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text-secondary);cursor:pointer;position:relative}' +
     '.' + ROOT_CLASS + ' .hp-msg-tab.active{color:var(--primary-dark);font-weight:600}' +
     '.' + ROOT_CLASS + ' .hp-msg-tab.active::after{content:"";position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:20px;height:2px;background:var(--primary);border-radius:1px}' +
-    '.' + ROOT_CLASS + ' .hp-search-box{padding:12px 16px;position:sticky;top:48px;background:var(--bg-primary);z-index:10}' +
+    '.' + ROOT_CLASS + ' .hp-search-box{padding:12px 16px;position:sticky;top:0;background:var(--bg-primary);z-index:10}' +
     '.' + ROOT_CLASS + ' .hp-search-input{width:100%;padding:10px 36px 10px 36px;border:1.5px solid var(--bg-secondary);border-radius:9999px;font-size:14px;background:var(--bg-card);color:var(--text-primary);outline:none;transition:border-color .2s}' +
     '.' + ROOT_CLASS + ' .hp-search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,0.1)}' +
     '.' + ROOT_CLASS + ' .hp-search-wrap{position:relative}' +
@@ -1104,7 +1104,7 @@
     '.' + ROOT_CLASS + ' .hp-style-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}' +
     '.' + ROOT_CLASS + ' .hp-style-item{padding:10px 8px;text-align:center;border:1.5px solid var(--bg-secondary);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;transition:all .2s}' +
     '.' + ROOT_CLASS + ' .hp-style-item.selected{border-color:var(--primary);background:rgba(232,160,191,0.08);color:var(--primary-dark)}' +
-    '.' + ROOT_CLASS + ' .hp-dark{--bg-primary:#1a1a1f;--bg-card:#252529;--bg-secondary:#2d2d33;--text-primary:#e8e6ea;--text-secondary:#9a95a0;--text-hint:#5c5760;--glass-bg:rgba(26,26,31,0.85)}' +
+    '.' + ROOT_CLASS + '.hp-dark{--bg-primary:#1a1a1f;--bg-card:#252529;--bg-secondary:#2d2d33;--text-primary:#e8e6ea;--text-secondary:#9a95a0;--text-hint:#5c5760;--glass-bg:rgba(26,26,31,0.85)}' +
     '.' + ROOT_CLASS + ' .hp-explore-tag{display:inline-flex;align-items:center;gap:4px;padding:8px 14px;border-radius:9999px;font-size:13px;cursor:pointer;transition:all .2s;margin:4px;border:1.5px solid var(--bg-secondary);background:var(--bg-card)}' +
     '.' + ROOT_CLASS + ' .hp-explore-tag:hover{border-color:var(--primary);background:rgba(232,160,191,0.06)}' +
     '.' + ROOT_CLASS + ' .hp-explore-tag.selected{border-color:var(--primary);background:rgba(232,160,191,0.12);color:var(--primary-dark);font-weight:600}' +
@@ -1156,7 +1156,7 @@
     '}' +
     /* ── 移动端小屏适配 (<480px) ── */
     '@media(max-width:479px){' +
-      '.' + ROOT_CLASS + ' .hp-header{padding:8px 10px;gap:4px;height:44px}' +
+      '.' + ROOT_CLASS + ' .hp-header{padding:8px 10px;gap:4px;min-height:44px}' +
       '.' + ROOT_CLASS + ' .hp-header-title{font-size:15px}' +
       '.' + ROOT_CLASS + ' .hp-icon-btn{width:32px;height:32px;min-width:32px;min-height:32px}' +
       '.' + ROOT_CLASS + ' .hp-icon-btn svg{width:20px;height:20px;max-width:20px;max-height:20px}' +
@@ -1512,7 +1512,7 @@
       var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.fileText + '<p>\u6682\u65e0\u5185\u5bb9</p>';
       container.appendChild(emptyDiv);
     }
-    var menuItems = [{icon:ICONS.switchIcon,name:"\u5207\u6362\u8eab\u4efd",act:"showPersonaSwitcher"},{icon:ICONS.settings,name:"\u8bbe\u7f6e",act:"showSettings"},{icon:ICONS.tag,name:"\u7ba1\u7406\u6807\u7b7e",act:"showTagManager"},{icon:ICONS.trash,name:"\u6e05\u9664\u7f13\u5b58",act:"clearCache"}];
+    var menuItems = [{icon:ICONS.switchIcon,name:"\u5207\u6362\u8eab\u4efd",act:"showPersonaSwitcher"},{icon:ICONS.settings,name:"\u8bbe\u7f6e",act:"showSettings"},{icon:ICONS.tag,name:"\u7ba1\u7406\u6807\u7b7e",act:"showTagManager"}];
     for (var m = 0; m < menuItems.length; m++) { var mi = menuItems[m]; var menuEl = document.createElement("div"); menuEl.className = "hp-menu-item"; menuEl.setAttribute("data-act", mi.act); menuEl.innerHTML = mi.icon + '<span>' + mi.name + '</span>' + ICONS.chevronRight.replace(/24/g,"16").replace("currentColor","var(--text-hint)"); menuEl.onclick = (function(act) { return function() { window.__hofter[act](); }; })(mi.act); container.appendChild(menuEl); }
   }
 
@@ -1829,7 +1829,7 @@
       '<div class="hp-settings-row"><span>\u81ea\u52a8\u751f\u6210\u8bc4\u8bba</span><div class="hp-toggle ' + (s.autoGenerateComments?"on":"") + '" onclick="window.__hofter.toggleAutoComments()"></div></div>' +
       '<div class="hp-settings-row"><span>\u81ea\u52a8\u5173\u6ce8\u65b0\u6897\u6807\u7b7e</span><div class="hp-toggle ' + (s.autoFollowTropeTags?"on":"") + '" onclick="window.__hofter.toggleAutoFollowTropeTags()"></div></div></div>' +
       '<div class="hp-settings-section"><div class="hp-section-title">\u5176\u4ed6</div>' +
-      '<div class="hp-menu-item" onclick="window.__hofter.clearCache()">' + ICONS.trash + '<span>\u6e05\u9664\u7f13\u5b58</span></div></div>';
+      '<div class="hp-menu-item" onclick="window.__hofter.confirmClearCache()">' + ICONS.trash + '<span>\u6e05\u9664\u7f13\u5b58</span></div></div>';
     page.appendChild(body); overlay.appendChild(page); state.containerEl.appendChild(overlay);
   }
 
@@ -2321,32 +2321,142 @@
         if (state.currentTagPage) { state.currentPage = "tagPage"; renderApp(); }
       });
     },
-    toggleCpMode: function() { state.settings.cpMode = state.settings.cpMode === "unrestricted" ? "default" : "unrestricted"; saveSettings(state.settings); showSettings(); },
+    toggleCpMode: function() {
+      state.settings.cpMode = state.settings.cpMode === "unrestricted" ? "default" : "unrestricted";
+      saveSettings(state.settings);
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u65e0\u9650\u5236\u6a21\u5f0f") >= 0) {
+            var toggle = rows[i].querySelector(".hp-toggle");
+            if (toggle) { if (state.settings.cpMode === "unrestricted") toggle.classList.add("on"); else toggle.classList.remove("on"); }
+            break;
+          }
+        }
+      }
+    },
     setMemoryProb: function(val) { state.settings.memoryAttachProbability = parseInt(val, 10); saveSettings(state.settings); },
     setWordCountMin: function(val) { state.settings.wordCountMin = parseInt(val, 10) || 3000; saveSettings(state.settings); },
     setWordCountMax: function(val) { state.settings.wordCountMax = parseInt(val, 10) || 8000; saveSettings(state.settings); },
-    toggleAutoComments: function() { state.settings.autoGenerateComments = !state.settings.autoGenerateComments; saveSettings(state.settings); showSettings(); },
-    toggleAutoFollowTropeTags: function() { state.settings.autoFollowTropeTags = !state.settings.autoFollowTropeTags; saveSettings(state.settings); showSettings(); },
+    toggleAutoComments: function() {
+      state.settings.autoGenerateComments = !state.settings.autoGenerateComments;
+      saveSettings(state.settings);
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u81ea\u52a8\u751f\u6210\u8bc4\u8bba") >= 0) {
+            var toggle = rows[i].querySelector(".hp-toggle");
+            if (toggle) { if (state.settings.autoGenerateComments) toggle.classList.add("on"); else toggle.classList.remove("on"); }
+            break;
+          }
+        }
+      }
+    },
+    toggleAutoFollowTropeTags: function() {
+      state.settings.autoFollowTropeTags = !state.settings.autoFollowTropeTags;
+      saveSettings(state.settings);
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u81ea\u52a8\u5173\u6ce8\u65b0\u6897\u6807\u7b7e") >= 0) {
+            var toggle = rows[i].querySelector(".hp-toggle");
+            if (toggle) { if (state.settings.autoFollowTropeTags) toggle.classList.add("on"); else toggle.classList.remove("on"); }
+            break;
+          }
+        }
+      }
+    },
     toggleTheme: function() {
       state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
       saveSettings(state.settings);
       var el = state.containerEl;
       if (state.settings.theme === "dark") el.classList.add("hp-dark");
       else el.classList.remove("hp-dark");
-      var settingsOverlay = document.getElementById("settings-page");
-      if (settingsOverlay) { closeSheet("settings-page"); showSettings(); }
-      var readerSettingsOverlay = document.getElementById("reader-settings");
-      if (readerSettingsOverlay) { closeSheet("reader-settings"); showReaderSettings(); }
+      /* 更新设置页面中的toggle样式 */
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var toggles = settingsPage.querySelectorAll(".hp-toggle");
+        var themeToggle = null;
+        /* 深色模式toggle是第一个 */
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u6df1\u8272\u6a21\u5f0f") >= 0) {
+            themeToggle = rows[i].querySelector(".hp-toggle");
+            break;
+          }
+        }
+        if (themeToggle) {
+          if (state.settings.theme === "dark") themeToggle.classList.add("on");
+          else themeToggle.classList.remove("on");
+        }
+      }
+      /* 更新阅读器设置中的toggle */
+      var readerSettings = document.getElementById("reader-settings");
+      if (readerSettings) {
+        var rsToggles = readerSettings.querySelectorAll(".hp-toggle");
+        for (var j = 0; j < rsToggles.length; j++) {
+          if (state.settings.theme === "dark") rsToggles[j].classList.add("on");
+          else rsToggles[j].classList.remove("on");
+        }
+      }
     },
     setFontSize: function(val) {
       state.fontSize = parseInt(val, 10);
       state.settings.fontSize = state.fontSize;
       saveSettings(state.settings);
+      /* 更新设置页面显示 */
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var sizeSpan = settingsPage.querySelector(".hp-settings-row span");
+        /* 找到包含"字号"的span并更新 */
+        var allSpans = settingsPage.querySelectorAll(".hp-settings-row span");
+        for (var si = 0; si < allSpans.length; si++) {
+          if (allSpans[si].textContent.indexOf("\u5b57\u53f7") >= 0) {
+            allSpans[si].textContent = "\u5b57\u53f7\uff1a" + state.fontSize + "px";
+            break;
+          }
+        }
+      }
+      /* 更新阅读器设置页面显示 */
+      var readerSettings = document.getElementById("reader-settings");
+      if (readerSettings) {
+        var rsSpans = readerSettings.querySelectorAll(".hp-settings-row span");
+        for (var ri = 0; ri < rsSpans.length; ri++) {
+          if (rsSpans[ri].textContent.indexOf("\u5b57\u53f7") >= 0) {
+            rsSpans[ri].textContent = "\u5b57\u53f7\uff1a" + state.fontSize + "px";
+            break;
+          }
+        }
+      }
+      /* 更新阅读器中的文字 */
       var readerBody = document.querySelector(".hp-reader-body");
       if (readerBody) {
         var texts = readerBody.querySelectorAll(".hp-reader-text");
         for (var i = 0; i < texts.length; i++) texts[i].style.fontSize = state.fontSize + "px";
       }
+    },
+    confirmClearCache: function() {
+      var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "hp-clear-confirm";
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+      var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+      sheet.innerHTML = '<div class="hp-sheet-handle"></div>' +
+        '<div style="padding:16px;text-align:center">' +
+        '<div style="font-size:48px;margin-bottom:12px">' + ICONS.trash.replace(/24/g,"48").replace("currentColor","var(--like-red)") + '</div>' +
+        '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\u786e\u8ba4\u6e05\u9664\u7f13\u5b58\uff1f</div>' +
+        '<div style="font-size:14px;color:var(--text-secondary);line-height:1.6">\u6b64\u64cd\u4f5c\u5c06\u6e05\u9664\u6240\u6709\u5df2\u751f\u6210\u7684\u6458\u8981\u3001\u6b63\u6587\u3001\u8bc4\u8bba\u3001\u6536\u85cf\u3001\u5386\u53f2\u548c\u7a0d\u540e\u770b\u8bb0\u5f55\uff0c\u4e14\u65e0\u6cd5\u64a4\u9500\u3002</div>' +
+        '</div>' +
+        '<div style="display:flex;gap:12px;padding:0 16px 16px">' +
+        '<button class="hp-btn hp-btn-outline" style="flex:1" onclick="document.getElementById(\'hp-clear-confirm\').remove()">\u53d6\u6d88</button>' +
+        '<button class="hp-btn" style="flex:1;background:var(--like-red);color:#fff" onclick="document.getElementById(\'hp-clear-confirm\').remove();window.__hofter.clearCache()">\u786e\u8ba4\u6e05\u9664</button>' +
+        '</div>';
+      overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
     },
     clearCache: function() {
       state.summaries = []; state.publishedWorks = []; state.favorites = []; state.readHistory = []; state.readLater = [];
