@@ -619,8 +619,33 @@
       .replace(/<system_execution_directive>[\s\S]*?<\/system_execution_directive>/gi, "")
       .replace(/<!--[\s\S]*?-->/g, "")
       .replace(/<[^>]+>/g, "");
+    /* 尝试匹配完整JSON */
     var m = stripped.match(/\{[\s\S]*\}/);
-    return { json: m ? m[0] : null, macroChain: macroChain };
+    if (m) return { json: m[0], macroChain: macroChain };
+    /* JSON被截断：尝试找到第一个 { 并补全闭合括号 */
+    var firstBrace = stripped.indexOf("{");
+    if (firstBrace < 0) return { json: null, macroChain: macroChain };
+    var partial = stripped.substring(firstBrace);
+    /* 计算未闭合的括号数量并补全 */
+    var openBraces = 0, openBrackets = 0, inStr = false, escape = false;
+    for (var ci = 0; ci < partial.length; ci++) {
+      var ch = partial[ci];
+      if (escape) { escape = false; continue; }
+      if (ch === "\\") { if (inStr) escape = true; continue; }
+      if (ch === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (ch === "{") openBraces++;
+      else if (ch === "}") openBraces--;
+      else if (ch === "[") openBrackets++;
+      else if (ch === "]") openBrackets--;
+    }
+    /* 如果在字符串中被截断，先关闭字符串 */
+    if (inStr) partial += '"';
+    /* 补全缺失的闭合括号 */
+    while (openBrackets > 0) { partial += "]"; openBrackets--; }
+    while (openBraces > 0) { partial += "}"; openBraces--; }
+    debugLog("JSON truncated, repaired by adding closing brackets");
+    return { json: partial, macroChain: macroChain };
   }
 
   /* ─── AI 调用层 ─── */
