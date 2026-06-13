@@ -194,8 +194,9 @@
       "- 梗概与场景区间",
       "- 情感氛围标签（悲剧/喜剧/甜饼/虐/恨海情天/正剧等）",
       "- 所有角色的设定卡",
+      "- 段落结构预判：本场景的情感节奏大致如何？哪些时刻可能需要张力爆发（短段/单句成段），哪些时刻需要沉浸铺陈（中长段），哪些时刻需要呼吸留白？对话密度预估如何？这些预判将在Step 3中细化为具体的段落节奏规划。",
       "",
-      "宣告：我已完成信息扫描。(Pass/Fail)",
+      "宣告：我已完成信息扫描，包括段落结构预判。(Pass/Fail)",
       "",
       "**━━━ Step 2: 特征筛选 ━━━**",
       "",
@@ -241,7 +242,7 @@
       "",
       "**━━━ Step 3: 文风规划 ━━━**",
       "",
-      "基于情感氛围标签，从以下五个维度做本章的文风规划：",
+      "基于情感氛围标签，从以下六个维度做本章的文风规划：",
       "",
       "1. 文字温度：",
       "   - 温暖基调 → 文字有热度，修辞偏柔软，感官偏向明亮与生活质感",
@@ -260,11 +261,24 @@
       "   - 日常/幽默 → 中短句交替，对话占比较高",
       "   - 混合基调 → 以主体基调定底色，关键场景做局部调整",
       "",
-      "4. 与角色塑造的协同：",
+      "4. 段落呼吸节奏（核心格式规范）：",
+      "   同人文的段落不是铁板一块。段落划分是呼吸，是节奏，是读者眼睛的歇脚处。",
+      "   - 拒绝文字墙：任何段落不得超过200字。如果一段写了超过200字，必须找到自然的呼吸点拆分。",
+      "   - 自然呼吸原则：段落长短必须自然交替，像真实的呼吸一样——有时深吸一口长气（中长段），有时急促地喘一下（短段），有时屏住呼吸（单句成段）。绝不允许全篇都是匀称的中等段落，也不允许机械的「一长一短」ABAB模式。",
+      "   - 张力时刻单句成段：当情感到达爆发点、转折点、或者一个需要读者停顿消化的瞬间——一个句子独立成段。这不是为了戏剧化，是为了给读者一个喘息和感受的空间。",
+      "     · 角色说出关键台词的瞬间",
+      "     · 某个动作的含义突然被理解的瞬间",
+      "     · 情感从一种状态翻转到另一种状态的瞬间",
+      "     · 沉默比任何话语都更响亮的瞬间",
+      "   - 对话独立成段：角色的对话应当尽量单独成段，不要把对话和长篇叙述揉在同一个段落里。对话是角色之间的抛接球——每一句话都应该有自己独立的空间被读者接收。对话前后的叙述性描写（动作、表情、环境）可以和对话放在同一段，但两个不同角色的对话绝不能挤在同一段。",
+      "   - 叙述段落的拆分逻辑：一个叙述段落只承载一个情感动作或一个感知焦点。当视角切换、情感转向、时间推进、或者从外在动作转向内心感知时——拆段。",
+      "   - 具体节奏规划：基于Step 1的段落结构预判，为本章规划大致的段落节奏图——开头几段用什么节奏建立氛围？中间的情感推进段落如何呼吸？高潮段落如何用短段和单句成段制造张力？结尾如何用段落节奏收束情感？",
+      "",
+      "5. 与角色塑造的协同：",
       "   - 文字本身的质地是否与角色的世界兼容？一个粗糙的角色，文字不应过分精致；一个缜密的角色，文字不应过分随意。",
       "   - 角色的语言习惯是否在叙述语言中得到呼应？不是每句话都要模仿角色口吻，但整体的文字质感不该与角色的世界冲突。",
       "",
-      "5. 幽默质地：",
+      "6. 幽默质地：",
       "   - 幽默不是刻意的搞笑。是写作的呼吸阀——让读者在情感密度中得以透气。",
       "   - 不同基调下，幽默的质地完全不同：",
       "     · 治愈/甜饼 → 自然的玩闹感。两个人之间松弛的抛接球、嘴硬的调侃、没谱的玩笑。",
@@ -272,7 +286,7 @@
       "     · 悲剧/恨海情天 → 荒诞的黑色幽默。笑完了更难过的那种。角色说的冷笑话底下压着深渊。",
       "   - 确认：这一章的幽默质地是什么？谁会在哪一刻说出一句自己都没意识到是好笑的话？",
       "",
-      "宣告：我完成了文风规划——文字温度、意象域、句式节奏、角色协同、幽默质地均已确定。(Pass/Fail)",
+      "宣告：我完成了文风规划——文字温度、意象域、句式节奏、段落呼吸节奏、角色协同、幽默质地均已确定。(Pass/Fail)",
       "",
       "**━━━ Step 4: 角色深层理解 ━━━**",
       "",
@@ -332,17 +346,21 @@
       "4. 情感密度与留白：全章是否保有足够的留白——有没有至少一两处，什么都没发生、谁都没说话、只有空间本身存在？如果每一段都在推进情感 → 太密了，读者不能呼吸。拆一段，放一段安静。",
       "5. 特征边界确认：我已经明确哪些特征本场不使用了吗？那些特征已被搁置，不在本场出现。",
       "6. 角色行为真实性核查：右方在本场景中的每一个行为，是否都能在其角色设定中找到根源？是否有任何行为是为了「让左方有机会包容」而虚构的？如果有 → 删除，回到Step 2第三刀。",
+      "7. 段落呼吸节奏预检：回顾Step 3第4维度的段落呼吸规划——我的段落划分计划是否遵循了自然呼吸原则？是否存在连续三个以上等长段落？张力时刻是否安排了单句成段？对话是否独立成段？如果全章段落节奏单调 → 回到Step 3第4维度重新规划。",
       "",
-      "宣告：所有角色反应携带独特的生命指纹。特征筛选边界清晰。文风一致。可以动笔。(Pass/Fail)",
+      "宣告：所有角色反应携带独特的生命指纹。特征筛选边界清晰。文风一致。段落呼吸节奏自然。可以动笔。(Pass/Fail)",
       "",
       "全部Pass后，开始生成正文。",
       "</macro_chain>",
       "",
       "<inline_chain>",
       "【段落通用法则】",
-      "1. 拒绝文字墙：不可使用令人窒息的超大段落。对话与肢体微动作拆分呈现，像抛接球一样交错。",
-      "2. 文风接管排版：段落的长短组合、叙事的快慢节奏，完全由主思维链Step 3确定的文风规划决定。深沉基调可绵密长段，锋利基调可碎裂短句。",
-      "3. 程度内敛：",
+      "1. 拒绝文字墙：任何段落不得超过200字。对话与肢体微动作拆分呈现，像抛接球一样交错。如果一段超过200字，必须找到自然的呼吸点拆分。",
+      "2. 文风接管排版：段落的长短组合、叙事的快慢节奏，完全由主思维链Step 3确定的文风规划（含第4维度段落呼吸节奏）决定。",
+      "3. 段落呼吸：段落长短必须自然交替——有时深吸一口长气（中长段），有时急促地喘一下（短段），有时屏住呼吸（单句成段）。绝不允许全篇匀称中等段落，也不允许机械ABAB模式。",
+      "4. 对话独立成段：角色对话尽量单独成段。对话前后的叙述性描写（动作、表情）可以和对话同段，但两个不同角色的对话绝不能挤在同一段。",
+      "5. 张力时刻单句成段：情感爆发点、转折点、沉默比话语更响亮的瞬间——一个句子独立成段。",
+      "6. 程度内敛：",
       "   - 禁用程度强烈的副词：不可用「极其」「极」「无比」「特别」。强调程度时用具体的细节平实呈现。不说「极其安静」，写「连翻书页的沙沙声都显得突兀」。",
       "   - 禁用下定义句式：不可用「这是……」「那是一个……」等直接贴标签的句子。用白描替代，让读者自己感受到。",
       "   - 保持语言自然平实：像日常说话，用看得见、听得见、摸得着的内容去形容。",
@@ -450,6 +468,13 @@
       "- 环境描写是否独立悬浮在角色之外？（光柱/浮尘/月光如水/空调嗡鸣/针掉落）",
       "- 是否有脱离角色的纯粹风景段落？",
       "- 如果有 → 让角色去触碰环境：指腹摩挲沙发粗糙的边缘、视线落在不再冒热气的咖啡上、窗外的雨声被关窗的动作截断。环境必须与人产生连接。",
+      "",
+      "⑮ 段落呼吸节奏扫描",
+      "- 本段是否超过200字？如果超过 → 必须拆分。找到自然的呼吸点——视角切换处、情感转向处、动作与感知的交界处——在那里断开。",
+      "- 本段与前一段的长度是否完全相同？如果连续三段长度相近 → 违反自然呼吸原则。调整其中一段：或拆分为更短的段落，或合并为稍长的叙述流。",
+      "- 本段是否包含对话？如果包含两个不同角色的对话 → 必须拆段，每个角色的对话独立成段。",
+      "- 本段是否处于张力时刻？如果是 → 考虑将关键句单独成段，制造屏息效果。不要让张力时刻淹没在一大段文字中。",
+      "- 回顾最近三段的节奏：是否像自然的呼吸？还是有机械重复感？如果节奏单调 → 调整本段的长度和结构来打破模式。",
       "-->",
       "[正文]",
       "",
@@ -477,7 +502,7 @@
       "",
       "【输出流程示范】",
       "<macro_chain>（完成Step 1至Step 7的完整推演，每步必须宣告Pass/Fail）</macro_chain>",
-      '{ "inline_checks": [{ "intent": "本段核心意图", "vibe_match": "是否与Step3规划一致", "scan_result": "①通过 ②通过 ③通过 ④通过 ⑤通过 ⑥不适用 ⑦通过 ⑧通过 ⑨通过 ⑩通过 ⑪通过 ⑫通过 ⑬通过 ⑭通过", "paragraph_text": "本段正文" }], "chapter": { "title": "章节标题", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "continuation_summary": "150字续写摘要", "content_summary": "200字内容摘要" }',
+      '{ "inline_checks": [{ "intent": "本段核心意图", "vibe_match": "是否与Step3规划一致", "scan_result": "①通过 ②通过 ③通过 ④通过 ⑤通过 ⑥不适用 ⑦通过 ⑧通过 ⑨通过 ⑩通过 ⑪通过 ⑫通过 ⑬通过 ⑭通过 ⑮通过", "paragraph_text": "本段正文" }], "chapter": { "title": "章节标题", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "continuation_summary": "150字续写摘要", "content_summary": "200字内容摘要" }',
 
       "",
       "<system_execution_directive>",
@@ -611,7 +636,8 @@
       "",
       "**━━━ Step 1: Information Scan ━━━**",
       "Extract: Ship tags & relationship nature (non-breakable, non-reversible) | Synopsis & scene range | Emotional atmosphere tags | All character setting cards",
-      "Declaration: I have completed the information scan. (Pass/Fail)",
+      "Paragraph structure preview: What is the emotional rhythm of this scene? Which moments may need tension bursts (short paragraphs / single-sentence paragraphs), which need immersive elaboration (medium-long paragraphs), which need breathing white space? What is the estimated dialogue density? These previews will be refined into specific paragraph rhythm planning in Step 3.",
+      "Declaration: I have completed the information scan, including paragraph structure preview. (Pass/Fail)",
       "",
       "**━━━ Step 2: Trait Filtering ━━━**",
       "Bifurcate all character traits:",
@@ -646,13 +672,25 @@
       "Declaration: Traits maintain full grayscale. No exaggeration/downgrading/foil usage. Narrative perspective aligned with emotional center. (Pass/Fail)",
       "",
       "**━━━ Step 3: Writing Style Planning ━━━**",
-      "Plan across five dimensions based on emotional atmosphere tags:",
+      "Plan across six dimensions based on emotional atmosphere tags:",
       "1. Text Temperature: warm (soft rhetoric, bright senses) / neutral (calm, economical) / cold (restrained, white space as weapon)",
       "2. Imagery Domain Anchoring: Dominant imagery domain? Allowed sources (3-5 specific image types) | Forbidden sources (2-3 domains conflicting with this moment's emotional texture)",
       "3. Sentence Rhythm: confrontation → short/fragmented | immersion → long/dense | daily → medium-short alternating | mixed → base tone + local adjustments",
-      "4. Character Synergy: Does language texture align with the character's world? Are speech habits echoed in narration?",
-      "5. Humor Texture: healing/fluff → natural playfulness | drama → deadpan comfort | tragedy/love-hate → absurdist dark humor. Confirm: who says something unintentionally funny, and when?",
-      "Declaration: Style planning complete—temperature, imagery, rhythm, synergy, humor all determined. (Pass/Fail)",
+      "4. Paragraph Breathing Rhythm (Core Format Rule):",
+      "   Fanfiction paragraphs are not monoliths. Paragraph breaks are breath, rhythm, resting places for the reader's eyes.",
+      "   - No text walls: No paragraph may exceed 200 characters. If a paragraph exceeds 200 characters, find a natural breathing point and split.",
+      "   - Natural breathing principle: Paragraph lengths must alternate naturally, like real breathing—sometimes a deep long breath (medium-long paragraph), sometimes a quick gasp (short paragraph), sometimes holding breath (single-sentence paragraph). Never allow all paragraphs to be uniformly medium, nor a mechanical long-short ABAB pattern.",
+      "   - Single-sentence paragraphs at tension moments: When emotion reaches a breaking point, turning point, or a moment requiring the reader to pause and absorb—one sentence stands alone as a paragraph. Not for drama—for giving the reader space to breathe and feel.",
+      "     · The moment a character speaks a crucial line",
+      "     · The moment an action's meaning is suddenly understood",
+      "     · The moment emotion flips from one state to another",
+      "     · The moment silence is louder than any words",
+      "   - Dialogue as separate paragraphs: Character dialogue should generally stand as its own paragraph. Don't mash dialogue and long narration into one paragraph. Dialogue is a game of catch—each line deserves its own space to be received by the reader. Narrative description around dialogue (actions, expressions, environment) may share a paragraph with the dialogue, but two different characters' dialogue must never be crammed into the same paragraph.",
+      "   - Narrative paragraph splitting logic: One narrative paragraph carries one emotional action or one perceptual focus. When viewpoint shifts, emotion turns, time advances, or external action shifts to inner perception—split the paragraph.",
+      "   - Concrete rhythm plan: Based on Step 1's paragraph structure preview, sketch a paragraph rhythm map for this chapter—what rhythm do the opening paragraphs use to establish atmosphere? How do the middle emotional progression paragraphs breathe? How do climax paragraphs use short paragraphs and single-sentence paragraphs to create tension? How does the ending use paragraph rhythm to close the emotion?",
+      "5. Character Synergy: Does language texture align with the character's world? Are speech habits echoed in narration?",
+      "6. Humor Texture: healing/fluff → natural playfulness | drama → deadpan comfort | tragedy/love-hate → absurdist dark humor. Confirm: who says something unintentionally funny, and when?",
+      "Declaration: Style planning complete—temperature, imagery, rhythm, paragraph breathing rhythm, synergy, humor all determined. (Pass/Fail)",
       "",
       "**━━━ Step 4: Deep Character Understanding ━━━**",
       "For each character, specify (generic adjectives forbidden):",
@@ -685,16 +723,20 @@
       "4. Emotional Density & White Space: Is there at least one place where nothing happens, no one speaks, only space exists? Every paragraph pushing emotion → too dense. Insert a quiet one.",
       "5. Trait Boundary: Shelved traits confirmed absent from this scene.",
       "6. Behavioral Authenticity Check: Can every right-side behavior in this scene trace back to a root in their character setting? Is any behavior fabricated to 'give the left-side a chance to be tolerant'? If yes → delete, return to Step 2 Third Cut.",
-      "Declaration: All reactions carry unique fingerprints. Trait boundaries clear. Style consistent. Ready to write. (Pass/Fail)",
+      "7. Paragraph Breathing Rhythm Pre-check: Review Step 3 Dimension 4's paragraph breathing plan—does my paragraph division follow the natural breathing principle? Are there three or more consecutive paragraphs of similar length? Are tension moments planned with single-sentence paragraphs? Is dialogue in separate paragraphs? If the chapter's paragraph rhythm is monotonous → return to Step 3 Dimension 4 and replan.",
+      "Declaration: All reactions carry unique fingerprints. Trait boundaries clear. Style consistent. Paragraph breathing rhythm natural. Ready to write. (Pass/Fail)",
       "",
       "All steps Pass. Begin generating main text.",
       "</macro_chain>",
       "",
       "<inline_chain>",
       "[Paragraph Universal Rules]",
-      "1. Reject text walls: Dialogue and physical micro-actions interwoven like catch, never suffocating mega-paragraphs.",
-      "2. Style governs layout: Paragraph length and pacing determined by Step 3's style plan.",
-      "3. Restrained intensity: Present degree through concrete details plainly. Use natural, everyday language—describe what can be seen, heard, touched.",
+      "1. Reject text walls: No paragraph may exceed 200 characters. Dialogue and physical micro-actions interwoven like catch. If a paragraph exceeds 200 characters, find a natural breathing point and split.",
+      "2. Style governs layout: Paragraph length and pacing determined by Step 3's style plan (including Dimension 4 paragraph breathing rhythm).",
+      "3. Paragraph breathing: Paragraph lengths must alternate naturally—sometimes a deep long breath (medium-long paragraph), sometimes a quick gasp (short paragraph), sometimes holding breath (single-sentence paragraph). Never allow uniformly medium paragraphs, nor mechanical ABAB patterns.",
+      "4. Dialogue as separate paragraphs: Character dialogue should generally stand as its own paragraph. Narrative description around dialogue may share a paragraph, but two different characters' dialogue must never be in the same paragraph.",
+      "5. Single-sentence paragraphs at tension moments: Emotional breaking points, turning points, moments where silence is louder than words—one sentence stands alone as a paragraph.",
+      "6. Restrained intensity: Present degree through concrete details plainly. Use natural, everyday language—describe what can be seen, heard, touched.",
       "",
       "Before each paragraph, embed invisible comment self-check. Loop until chapter naturally concludes:",
       "",
@@ -763,6 +805,13 @@
       "",
       "⑭ Lived Environment Scan",
       "Environment floating independently outside characters (光柱/浮尘/月光如水/空调嗡鸣) → let characters touch the environment: fingertips on rough sofa edge, gaze on coffee no longer steaming, rain sound cut off by closing the window. Environment must connect with a person.",
+      "",
+      "⑮ Paragraph Breathing Rhythm Scan",
+      "- Does this paragraph exceed 200 characters? If yes → must split. Find a natural breathing point—viewpoint shift, emotional turn, boundary between action and perception—and break there.",
+      "- Is this paragraph the same length as the previous one? If three consecutive paragraphs are similar in length → violates natural breathing. Adjust one: split into shorter paragraphs, or merge into a slightly longer narrative flow.",
+      "- Does this paragraph contain dialogue from two different characters? If yes → must split. Each character's dialogue stands as its own paragraph.",
+      "- Is this paragraph at a tension moment? If yes → consider making the key sentence stand alone as a paragraph for breath-holding effect. Don't let tension moments drown in a wall of text.",
+      "- Review the rhythm of the last three paragraphs: does it feel like natural breathing? Or is there a mechanical repetition? If rhythm is monotonous → adjust this paragraph's length and structure to break the pattern.",
       "-->",
       "[Main Text]",
       "",
@@ -789,7 +838,7 @@
       "",
       "[Output Flow Example]",
       "<macro_chain>(Complete Step 1 through Step 7 reasoning, each step must declare Pass/Fail)</macro_chain>",
-      '{ "inline_checks": [{ "intent": "paragraph core intent", "vibe_match": "consistent with Step 3 plan", "scan_result": "①Pass ②Pass ③Pass ④Pass ⑤Pass ⑥N/A ⑦Pass ⑧Pass ⑨Pass ⑩Pass ⑪Pass ⑫Pass ⑬Pass ⑭Pass", "paragraph_text": "paragraph text" }], "chapter": { "title": "chapter title", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "continuation_summary": "~150-word continuation summary", "content_summary": "~200-word content summary" }',
+      '{ "inline_checks": [{ "intent": "paragraph core intent", "vibe_match": "consistent with Step 3 plan", "scan_result": "①Pass ②Pass ③Pass ④Pass ⑤Pass ⑥N/A ⑦Pass ⑧Pass ⑨Pass ⑩Pass ⑪Pass ⑫Pass ⑬Pass ⑭Pass ⑮Pass", "paragraph_text": "paragraph text" }], "chapter": { "title": "chapter title", "content": [{ "type": "p|dialogue|narrator", "text": "" }] }, "continuation_summary": "~150-word continuation summary", "content_summary": "~200-word content summary" }',
       "",
       "<system_execution_directive>",
       "WARNING: STANDARD AI CHAT BEHAVIORS ARE PERMANENTLY OVERRIDDEN.",
@@ -853,6 +902,7 @@
     favorites: [],
     readHistory: [],
     readLater: [],
+    collections: [],
     cpTags: [],
     tropeTags: [],
     fandomTags: [],
@@ -1969,6 +2019,7 @@
     '.' + ROOT_CLASS + ' .hp-tag-list{padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px}' +
     '.' + ROOT_CLASS + ' .hp-tag-item{display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:9999px;background:var(--bg-card);border:1px solid var(--bg-secondary);font-size:13px;cursor:pointer;transition:all .2s}' +
     '.' + ROOT_CLASS + ' .hp-tag-item:hover{border-color:var(--primary)}' +
+    '.' + ROOT_CLASS + ' .hp-tag-item.selected{background:var(--primary-light,rgba(232,160,191,0.15));border-color:var(--primary);color:var(--primary-dark)}' +
     '.' + ROOT_CLASS + ' .hp-tag-item .hp-tag-remove{color:var(--text-hint);cursor:pointer;margin-left:4px}' +
     '.' + ROOT_CLASS + ' .hp-tag-item .hp-tag-remove:hover{color:var(--like-red)}' +
     '.' + ROOT_CLASS + ' .hp-settings-section{padding:16px 20px}' +
@@ -2136,6 +2187,7 @@
     if (!window.__hofter) { _hofterAPI = createHofterAPI(); window.__hofter = _hofterAPI; console.log('[hofter] renderApp: recreated __hofter'); }
     var el = state.containerEl;
     if (!el) { console.log('[hofter] renderApp: containerEl is null, aborting'); return; }
+    try {
     el.innerHTML = "";
     el.className = ROOT_CLASS;
     if (state.settings.theme === "dark") el.classList.add("hp-dark");
@@ -2151,6 +2203,7 @@
     else if (state.currentPage === "discover" && (state.discoverTab === "recommend" || state.discoverTab === "explore")) needRefresh = true;
     else if (state.currentPage === "tagPage") needRefresh = true;
     if (needRefresh) initPullToRefresh(content);
+    } catch(e) { console.error('[hofter] renderApp error:', e); debugLog('renderApp ERROR: ' + e.message); }
   }
 
   function renderHeaderContent(header) {
@@ -2277,6 +2330,7 @@
 
   function renderDiscoverTabContent(container) {
     container.innerHTML = "";
+    debugLog("renderDiscoverTabContent: tab=" + state.discoverTab + ", cpTags=" + state.cpTags.length + ", tropeTags=" + state.tropeTags.length);
     if (state.discoverTab === "recommend") {
       var banner = document.createElement("div"); banner.className = "hp-banner"; banner.innerHTML = '<h3>\u53d1\u73b0\u65b0\u7684\u540c\u4eba\u6545\u4e8b</h3><p>\u5728\u8fd9\u91cc\u63a2\u7d22\u4f60\u559c\u6b22\u7684\u89d2\u8272\u548c\u4e16\u754c</p>';
       container.appendChild(banner);
@@ -2393,16 +2447,123 @@
     var tabs = document.createElement("div"); tabs.className = "hp-tabs";
     tabs.innerHTML = '<div class="hp-tab ' + (state.profileTab==="works"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'works\')">\u4f5c\u54c1</div><div class="hp-tab ' + (state.profileTab==="fav"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'fav\')">\u6536\u85cf</div><div class="hp-tab ' + (state.profileTab==="col"?"active":"") + '" onclick="window.__hofter.switchProfileTab(\'col\')">\u5408\u96c6</div>';
     container.appendChild(tabs);
-    if (state.profileTab === "works" && state.publishedWorks.length > 0) {
-      var grid = document.createElement("div"); grid.className = "hp-profile-grid";
-      for (var i = 0; i < state.publishedWorks.length; i++) { var w = state.publishedWorks[i]; var item = document.createElement("div"); item.className = "hp-profile-grid-item"; item.style.background = randomGradient(); item.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(w.title) + '</div>'; item.onclick = (function(wid) { return function() { window.__hofter.openReader(wid, true); }; })(w.id); grid.appendChild(item); }
-      container.appendChild(grid);
-    } else {
-      var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.fileText + '<p>\u6682\u65e0\u5185\u5bb9</p>';
-      container.appendChild(emptyDiv);
+    if (state.profileTab === "works") {
+      if (state.publishedWorks.length > 0) {
+        var grid = document.createElement("div"); grid.className = "hp-profile-grid";
+        for (var i = 0; i < state.publishedWorks.length; i++) { var w = state.publishedWorks[i]; var item = document.createElement("div"); item.className = "hp-profile-grid-item"; item.style.background = randomGradient(); item.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(w.title) + '</div>'; item.onclick = (function(wid) { return function() { window.__hofter.openReader(wid, true); }; })(w.id); grid.appendChild(item); }
+        container.appendChild(grid);
+      } else {
+        var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.fileText + '<p>\u6682\u65e0\u5185\u5bb9</p>';
+        container.appendChild(emptyDiv);
+      }
+    } else if (state.profileTab === "fav") {
+      /* 收藏列表：与收藏页同步 */
+      if (state.favorites.length > 0) {
+        var favGrid = document.createElement("div"); favGrid.className = "hp-profile-grid";
+        for (var fi = 0; fi < state.favorites.length; fi++) {
+          var fav = state.favorites[fi];
+          var favItem = document.createElement("div"); favItem.className = "hp-profile-grid-item"; favItem.style.background = randomGradient();
+          favItem.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(fav.title || "\u672a\u547d\u540d") + '</div>';
+          favItem.onclick = (function(fid) { return function() { window.__hofter.openReader(fid); }; })(fav.id);
+          favGrid.appendChild(favItem);
+        }
+        container.appendChild(favGrid);
+      } else {
+        var favEmpty = document.createElement("div"); favEmpty.className = "hp-empty"; favEmpty.innerHTML = ICONS.bookmark + '<p>\u6682\u65e0\u6536\u85cf</p>';
+        container.appendChild(favEmpty);
+      }
+    } else if (state.profileTab === "col") {
+      /* 合集列表 */
+      renderCollectionsTab(container);
     }
     var menuItems = [{icon:ICONS.switchIcon,name:"\u5207\u6362\u8eab\u4efd",act:"showPersonaSwitcher"},{icon:ICONS.settings,name:"\u8bbe\u7f6e",act:"showSettings"},{icon:ICONS.tag,name:"\u7ba1\u7406\u6807\u7b7e",act:"showTagManager"}];
     for (var m = 0; m < menuItems.length; m++) { var mi = menuItems[m]; var menuEl = document.createElement("div"); menuEl.className = "hp-menu-item"; menuEl.setAttribute("data-act", mi.act); menuEl.innerHTML = mi.icon + '<span>' + mi.name + '</span>' + ICONS.chevronRight.replace(/24/g,"16").replace("currentColor","var(--text-hint)"); menuEl.onclick = (function(act) { return function() { window.__hofter[act](); }; })(mi.act); container.appendChild(menuEl); }
+  }
+
+  /* ─── 合集功能 ─── */
+  function saveCollections() { if (state.roche && state.roche.storage) state.roche.storage.set("collections", state.collections); }
+
+  function renderCollectionsTab(container) {
+    /* 创建合集按钮 */
+    var createBtn = document.createElement("div"); createBtn.className = "hp-menu-item"; createBtn.innerHTML = ICONS.plus.replace(/24/g,"16") + '<span>\u521b\u5efa\u65b0\u5408\u96c6</span>';
+    createBtn.onclick = function() { showCreateCollectionDialog(); };
+    container.appendChild(createBtn);
+    /* 合集列表 */
+    if (state.collections.length > 0) {
+      for (var ci = 0; ci < state.collections.length; ci++) {
+        var col = state.collections[ci];
+        var colItem = document.createElement("div"); colItem.className = "hp-menu-item"; colItem.style.flexDirection = "column"; colItem.style.alignItems = "flex-start";
+        var workCount = (col.workIds || []).length;
+        colItem.innerHTML = '<div style="display:flex;align-items:center;gap:8px;width:100%"><div style="width:36px;height:36px;border-radius:8px;background:' + (col.gradient || randomGradient()) + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#fff;font-size:14px;font-weight:700">' + escapeHtml((col.name||"?")[0]) + '</span></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">' + escapeHtml(col.name) + '</div><div style="font-size:12px;color:var(--text-hint)">' + workCount + ' \u7bc7\u4f5c\u54c1</div></div><div class="hp-icon-btn" style="width:28px;height:28px" onclick="event.stopPropagation();window.__hofter.deleteCollection(\'' + col.id + '\')">' + ICONS.trash.replace(/24/g,"14") + '</div></div>';
+        colItem.onclick = (function(colId) { return function() { window.__hofter.openCollection(colId); }; })(col.id);
+        container.appendChild(colItem);
+      }
+    } else {
+      var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.folder + '<p>\u8fd8\u6ca1\u6709\u5408\u96c6\uff0c\u521b\u5efa\u4e00\u4e2a\u6765\u7ba1\u7406\u4f60\u7684\u4f5c\u54c1</p>';
+      container.appendChild(emptyDiv);
+    }
+  }
+
+  function showCreateCollectionDialog() {
+    var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "create-col-dialog";
+    overlay.onclick = function(e) { if (e.target === overlay) closeSheet("create-col-dialog"); };
+    var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+    sheet.innerHTML = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 20px"><div style="font-size:16px;font-weight:700;margin-bottom:16px">\u521b\u5efa\u5408\u96c6</div><input class="hp-input" id="hp-col-name" placeholder="\u5408\u96c6\u540d\u79f0" style="width:100%;margin-bottom:12px"><button class="hp-btn hp-btn-primary" style="width:100%" onclick="window.__hofter.createCollection()">\u521b\u5efa</button></div>';
+    overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+  }
+
+  function openCollectionView(colId) {
+    var col = null;
+    for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { col = state.collections[i]; break; } }
+    if (!col) return;
+    var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "col-view"; overlay.style.alignItems = "stretch";
+    var page = document.createElement("div"); page.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
+    var header = document.createElement("div"); header.className = "hp-header";
+    header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'col-view\')">' + ICONS.back + '</div></div><div class="hp-header-title">' + escapeHtml(col.name) + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.addToCollection(\'' + colId + '\')">' + ICONS.plus + '</div></div>';
+    page.appendChild(header);
+    var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto;padding:16px";
+    var workIds = col.workIds || [];
+    if (workIds.length > 0) {
+      for (var wi = 0; wi < workIds.length; wi++) {
+        var work = findSummaryById(workIds[wi]);
+        if (!work) continue;
+        var item = document.createElement("div"); item.className = "hp-menu-item";
+        item.innerHTML = '<span style="font-size:14px">' + escapeHtml(work.title || "\u672a\u547d\u540d") + '</span><div class="hp-icon-btn" style="width:28px;height:28px" onclick="event.stopPropagation();window.__hofter.removeFromCollection(\'' + colId + '\',\'' + workIds[wi] + '\')">' + ICONS.close.replace(/24/g,"14") + '</div>';
+        item.onclick = (function(wid) { return function() { closeSheet("col-view"); window.__hofter.openReader(wid); }; })(workIds[wi]);
+        body.appendChild(item);
+      }
+    } else {
+      var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.folder + '<p>\u5408\u96c6\u662f\u7a7a\u7684\uff0c\u70b9\u51fb\u53f3\u4e0a\u89d2\u6dfb\u52a0\u4f5c\u54c1</p>';
+      body.appendChild(emptyDiv);
+    }
+    page.appendChild(body); overlay.appendChild(page); state.containerEl.appendChild(overlay);
+  }
+
+  function showAddToCollectionDialog(colId) {
+    var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "add-to-col";
+    overlay.onclick = function(e) { if (e.target === overlay) closeSheet("add-to-col"); };
+    var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+    var html = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 20px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">\u6dfb\u52a0\u4f5c\u54c1\u5230\u5408\u96c6</div>';
+    /* 列出所有作品 */
+    var allWorks = state.summaries.concat(state.publishedWorks);
+    var col = null;
+    for (var ci = 0; ci < state.collections.length; ci++) { if (state.collections[ci].id === colId) { col = state.collections[ci]; break; } }
+    var existingIds = col ? (col.workIds || []) : [];
+    for (var wi = 0; wi < allWorks.length; wi++) {
+      var w = allWorks[wi];
+      if (existingIds.indexOf(w.id) >= 0) continue;
+      html += '<div class="hp-menu-item" onclick="window.__hofter.closeSheet(\'add-to-col\');window.__hofter.doAddToCollection(\'' + colId + '\',\'' + w.id + '\')"><span style="font-size:13px">' + escapeHtml(w.title || "\u672a\u547d\u540d") + '</span></div>';
+    }
+    if (allWorks.length === 0) html += '<div style="padding:16px;color:var(--text-hint);text-align:center">\u6682\u65e0\u53ef\u6dfb\u52a0\u7684\u4f5c\u54c1</div>';
+    html += '</div>';
+    sheet.innerHTML = html; overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+  }
+
+  function findSummaryById(id) {
+    for (var i = 0; i < state.summaries.length; i++) { if (state.summaries[i].id === id) return state.summaries[i]; }
+    for (var j = 0; j < state.publishedWorks.length; j++) { if (state.publishedWorks[j].id === id) return state.publishedWorks[j]; }
+    for (var k = 0; k < state.favorites.length; k++) { if (state.favorites[k].id === id) return state.favorites[k]; }
+    return null;
   }
 
   /* ─── Tag 专属页（CP标签 / 梗标签 分离逻辑） ─── */
@@ -3723,27 +3884,32 @@
     switchPage: function(page) { state.currentPage = page; renderApp(); },
     switchHomeTab: function(tab) { state.homeTab = tab; renderApp(); },
     switchDiscoverTab: function(tab) {
+      debugLog("switchDiscoverTab called: " + tab + ", currentPage: " + state.currentPage);
       state.discoverTab = tab;
+      /* 更新tab样式 */
+      var tabEls = document.querySelectorAll('#hp-main-content .hp-tabs .hp-tab');
+      var tabNames = ["recommend", "hot", "explore"];
+      for (var i = 0; i < tabEls.length; i++) {
+        if (tabNames[i] === tab) tabEls[i].classList.add("active");
+        else tabEls[i].classList.remove("active");
+      }
+      /* 清除搜索状态 */
+      var searchInput = document.getElementById("hp-discover-search-input");
+      if (searchInput) searchInput.value = "";
+      var searchResults = document.getElementById("hp-search-results");
+      if (searchResults) searchResults.innerHTML = "";
+      var clearBtn = document.getElementById("hp-search-clear");
+      if (clearBtn) clearBtn.style.display = "none";
+      /* 更新内容区域 */
       var contentEl = document.getElementById("hp-discover-content");
       if (contentEl) {
-        renderDiscoverTabContent(contentEl);
-        /* 更新tab样式 */
-        var tabs = contentEl.parentElement.querySelector(".hp-tabs");
-        if (tabs) {
-          tabs.innerHTML = '<div class="hp-tab ' + (state.discoverTab==="recommend"?"active":"") + '" onclick="window.__hofter.switchDiscoverTab(\'recommend\')">\u63a8\u8350</div><div class="hp-tab ' + (state.discoverTab==="hot"?"active":"") + '" onclick="window.__hofter.switchDiscoverTab(\'hot\')">\u70ed\u95e8</div><div class="hp-tab ' + (state.discoverTab==="explore"?"active":"") + '" onclick="window.__hofter.switchDiscoverTab(\'explore\')">\u6807\u7b7e\u63a2\u7d22</div>';
-        }
-        /* 清除搜索 */
-        var searchInput = document.getElementById("hp-discover-search-input");
-        if (searchInput) searchInput.value = "";
-        var resultsEl = document.getElementById("hp-search-results");
-        if (resultsEl) resultsEl.innerHTML = "";
-        var clearBtn = document.getElementById("hp-search-clear");
-        if (clearBtn) clearBtn.style.display = "none";
-        /* 确保内容区域可见（搜索时可能被隐藏） */
         contentEl.style.display = "";
+        renderDiscoverTabContent(contentEl);
       } else {
+        /* fallback: 完整重建 */
         renderApp();
       }
+      debugLog("switchDiscoverTab done, discoverTab: " + state.discoverTab);
     },
     switchCollectionTab: function(tab) { state.collectionTab = tab; renderApp(); },
     switchProfileTab: function(tab) { state.profileTab = tab; renderApp(); },
@@ -3970,10 +4136,31 @@
       overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
     },
     clearCache: function() {
-      state.summaries = []; state.publishedWorks = []; state.favorites = []; state.readHistory = []; state.readLater = [];
-      saveSummariesCache([]); savePublishedWorks([]); saveFavoritesData({favorites:[],readHistory:[],readLater:[]});
+      state.summaries = []; state.publishedWorks = []; state.favorites = []; state.readHistory = []; state.readLater = []; state.collections = [];
+      saveSummariesCache([]); savePublishedWorks([]); saveFavoritesData({favorites:[],readHistory:[],readLater:[]}); saveCollections();
       if (state.roche && state.roche.storage) { state.roche.storage.delete("summaries_cache"); state.roche.storage.delete("published_works"); }
       showToast("\u7f13\u5b58\u5df2\u6e05\u9664"); renderApp();
+    },
+    createCollection: function() {
+      var nameInput = document.getElementById("hp-col-name");
+      var name = nameInput ? nameInput.value.trim() : "";
+      if (!name) { showToast("\u8bf7\u8f93\u5165\u5408\u96c6\u540d\u79f0"); return; }
+      state.collections.push({id: generateId(), name: name, workIds: [], gradient: randomGradient()});
+      saveCollections(); closeSheet("create-col-dialog"); showToast("\u5408\u96c6\u521b\u5efa\u6210\u529f"); renderApp();
+    },
+    deleteCollection: function(colId) {
+      for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { state.collections.splice(i, 1); break; } }
+      saveCollections(); showToast("\u5408\u96c6\u5df2\u5220\u9664"); renderApp();
+    },
+    openCollection: function(colId) { openCollectionView(colId); },
+    addToCollection: function(colId) { showAddToCollectionDialog(colId); },
+    doAddToCollection: function(colId, workId) {
+      for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { if (!state.collections[i].workIds) state.collections[i].workIds = []; if (state.collections[i].workIds.indexOf(workId) < 0) state.collections[i].workIds.push(workId); break; } }
+      saveCollections(); showToast("\u5df2\u6dfb\u52a0\u5230\u5408\u96c6"); renderApp();
+    },
+    removeFromCollection: function(colId, workId) {
+      for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { var ids = state.collections[i].workIds || []; var idx = ids.indexOf(workId); if (idx >= 0) ids.splice(idx, 1); break; } }
+      saveCollections(); closeSheet("col-view"); showToast("\u5df2\u4ece\u5408\u96c6\u79fb\u9664"); renderApp();
     },
     showAddModelPreset: function() {
       closeSheet("settings-page");
@@ -4155,10 +4342,16 @@
         var cpItems = document.querySelectorAll("#hp-create-cp-list .tag-item.selected, #hp-create-cp-list .hp-tag-item.selected");
         for (var i = 0; i < cpItems.length; i++) { var cpId = cpItems[i].getAttribute("data-cp-id"); if (cpId) selectedCps.push(cpId); }
         if (selectedCps.length === 0) { showToast("\u8bf7\u81f3\u5c11\u9009\u62e9\u4e00\u4e2aCP"); return; }
+        /* 读取选中的梗标签（复选） */
+        var selectedTropes = [];
+        var trItems = document.querySelectorAll("#hp-create-trope-list .tag-item.selected, #hp-create-trope-list .hp-tag-item.selected");
+        for (var ti = 0; ti < trItems.length; ti++) { var trId = trItems[ti].getAttribute("data-trope-id"); if (trId) selectedTropes.push(trId); }
+        var tropeNames = [];
+        for (var tn = 0; tn < state.tropeTags.length; tn++) { if (selectedTropes.indexOf(state.tropeTags[tn].id) >= 0) tropeNames.push(state.tropeTags[tn].name); }
         showLoading();
         var lockTag = null;
         for (var j = 0; j < state.cpTags.length; j++) { if (state.cpTags[j].id === selectedCps[0]) { lockTag = state.cpTags[j]; break; } }
-        generateLayer2Full({title:promptText||"\u7075\u611f\u521b\u4f5c", cpTagId:selectedCps[0], cpTagName:lockTag?lockTag.name:"", excerpt:promptText, tropeTags:[], fandomTag:""}, function(result) {
+        generateLayer2Full({title:promptText||"\u7075\u611f\u521b\u4f5c", cpTagId:selectedCps[0], cpTagName:lockTag?lockTag.name:"", excerpt:promptText, tropeTags:tropeNames, fandomTag:""}, function(result) {
           hideLoading();
           if (result) {
             var work = {id:generateId(), title:promptText||"\u7075\u611f\u521b\u4f5c", author:state.activePersona?(state.activePersona.handle||state.activePersona.name):"\u6211", cpTagId:selectedCps[0], cpTagName:lockTag?lockTag.name:"", excerpt:promptText, fullContent:result, isByUser:true, coverGradient:randomGradient(), timeAgo:"\u521a\u521a"};
@@ -4884,6 +5077,7 @@
               promises.push(roche.storage.get("summaries_cache").then(function(v) { if (v) state.summaries = v; }).catch(function(){}));
               promises.push(roche.storage.get("published_works").then(function(v) { if (v) state.publishedWorks = v; }).catch(function(){}));
               promises.push(roche.storage.get("favorites").then(function(v) { if (v) { state.favorites = v.favorites || []; state.readHistory = v.readHistory || []; state.readLater = v.readLater || []; } }).catch(function(){}));
+              promises.push(roche.storage.get("collections").then(function(v) { if (v) state.collections = v; }).catch(function(){}));
             }
             if (roche.persona) {
               promises.push(roche.persona.getUserPersonas().then(function(list) { state.personas = list || []; }).catch(function(){}));
