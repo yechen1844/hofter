@@ -4171,56 +4171,26 @@
     _isDragging: false,
     _ball: null,
     _panel: null,
-    _observer: null
+    _observer: null,
+    _userDismissed: false
   };
 
   function getCurrentConversationId() {
-    /* 方法1: 从 URL pathname 中提取 */
     var path = window.location.pathname;
     var match = path.match(/\/chat\/(c_\d+)/);
     if (match) return match[1];
-    /* 方法2: 从 URL hash 中提取（部分路由可能用 hash） */
     var hash = window.location.hash;
     var hashMatch = hash.match(/\/chat\/(c_\d+)/);
     if (hashMatch) return hashMatch[1];
-    /* 方法3: 从 DOM 中查找带会话 ID 的元素属性 */
     var dataIdEl = document.querySelector('[data-conversation-id]');
-    if (dataIdEl) {
-      var cid = dataIdEl.getAttribute('data-conversation-id');
-      if (cid) return cid;
-    }
+    if (dataIdEl) { var cid = dataIdEl.getAttribute('data-conversation-id'); if (cid) return cid; }
     var dataIdEl2 = document.querySelector('[data-session-id]');
-    if (dataIdEl2) {
-      var sid = dataIdEl2.getAttribute('data-session-id');
-      if (sid) return sid;
-    }
-    /* 方法4: 从聊天消息的 data 属性中提取 */
-    var senderEl = document.querySelector('[data-sender-id]');
-    if (senderEl) {
-      /* 消息存在说明在聊天页，但无法直接获取 conversationId，返回占位符 */
-      return null;
-    }
+    if (dataIdEl2) { var sid = dataIdEl2.getAttribute('data-session-id'); if (sid) return sid; }
     return null;
-  }
-
-  /* 检测当前是否在聊天页面（不依赖 URL，纯 DOM 检测） */
-  function isInChatPage() {
-    /* 1. 检测聊天输入框 */
-    if (document.querySelector('.chat-input-textarea')) return true;
-    /* 2. 检测聊天头部 */
-    if (document.querySelector('.chat-header-title')) return true;
-    /* 3. 检测聊天消息 */
-    if (document.querySelector('.chat-message')) return true;
-    /* 4. 检测发送按钮 */
-    if (document.querySelector('.chat-input-send')) return true;
-    /* 5. 检测 URL */
-    if (window.location.pathname.match(/\/chat\//)) return true;
-    return false;
   }
 
   function getPendingShares() {
     return new Promise(function(resolve) {
-      /* 先尝试 localStorage（同步） */
       try {
         var localStr = localStorage.getItem("_hofter_pending_shares");
         if (localStr) {
@@ -4228,7 +4198,6 @@
           if (Array.isArray(parsed)) { resolve(parsed); return; }
         }
       } catch(e) {}
-      /* 再尝试 roche.storage（异步） */
       if (state.roche && state.roche.storage) {
         state.roche.storage.get("_hofter_pending_shares").then(function(v) {
           if (v) {
@@ -4256,7 +4225,6 @@
         state.roche.storage.set("_hofter_pending_shares", jsonStr);
       }
       try { localStorage.setItem("_hofter_pending_shares", jsonStr); } catch(e) {}
-      /* 如果为空，隐藏悬浮球 */
       if (filtered.length === 0) {
         hideShareBall();
       } else {
@@ -4281,9 +4249,7 @@
 
   function renderShareBall() {
     var existingBall = document.getElementById("hp-share-ball");
-    /* 如果球已在 DOM 中，跳过 */
     if (existingBall && existingBall.parentNode) return;
-    /* 如果 visible=true 但球不在 DOM 中（被 Vue 路由等移除），重置状态允许重建 */
     if (_shareBallState.visible && !existingBall) {
       _shareBallState.visible = false;
     }
@@ -4291,22 +4257,37 @@
 
     var ball = document.createElement("div");
     ball.id = "hp-share-ball";
-    ball.style.cssText = "position:fixed;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:99999;box-shadow:0 2px 12px rgba(102,126,234,0.4);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none";
-    ball.textContent = "\u270d";
+    /* 蓝绿色渐变，SVG图标，无emoji */
+    ball.style.cssText = "position:fixed;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#0ea5a0,#06b6d4);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:99999;box-shadow:0 2px 12px rgba(14,165,160,0.4);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none";
+    ball.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>';
     ball.style.left = _shareBallState.position.x + "px";
     ball.style.top = _shareBallState.position.y + "px";
 
     var badge = document.createElement("div");
     badge.id = "hp-share-ball-badge";
-    badge.style.cssText = "position:absolute;top:-4px;right:-4px;width:18px;height:18px;border-radius:50%;background:#e94560;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700";
+    badge.style.cssText = "position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;border-radius:9px;background:#f43f5e;color:#fff;font-size:10px;display:flex;align-items:center;justify-content:center;font-weight:700;padding:0 4px";
     ball.appendChild(badge);
 
-    /* 先获取 pending shares 数量再设置 badge */
     getPendingShares().then(function(shares) {
       badge.textContent = shares.length > 99 ? "99+" : String(shares.length);
     });
 
-    /* 触摸/鼠标事件处理（复用 monitor 验证有效的方案） */
+    /* 关闭按钮（长按或双击关闭） */
+    var closeBtn = document.createElement("div");
+    closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;line-height:1";
+    closeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+    closeBtn.onclick = function(e) {
+      e.stopPropagation();
+      e.preventDefault();
+      _shareBallState._userDismissed = true;
+      hideShareBall();
+    };
+    ball.appendChild(closeBtn);
+    /* 鼠标悬停显示关闭按钮 */
+    ball.addEventListener("mouseenter", function() { closeBtn.style.display = "flex"; });
+    ball.addEventListener("mouseleave", function() { closeBtn.style.display = "none"; });
+
+    /* 触摸/鼠标事件处理 */
     function onStart(cx, cy) {
       _shareBallState._isDragging = true;
       _shareBallState._dragMoved = false;
@@ -4401,13 +4382,6 @@
   }
 
   function renderSharePanel() {
-    /* 检查是否在聊天页面（DOM 检测优先，URL 兜底） */
-    if (!isInChatPage()) {
-      /* 不在聊天页时静默关闭面板，不弹Toast */
-      var existingPanel = document.getElementById("hp-share-panel-ball");
-      if (existingPanel) { existingPanel.remove(); _shareBallState.panelVisible = false; }
-      return;
-    }
     var conversationId = getCurrentConversationId();
 
     getPendingShares().then(function(shares) {
@@ -4415,22 +4389,8 @@
         hideShareBall();
         return;
       }
-      /* 筛选与当前会话匹配的 pending shares */
-      var matchedShares = [];
-      var unmatchedCount = 0;
-      for (var fi = 0; fi < shares.length; fi++) {
-        if (!shares[fi].conversationId || shares[fi].conversationId === conversationId) {
-          matchedShares.push(shares[fi]);
-        } else {
-          unmatchedCount++;
-        }
-      }
-      if (matchedShares.length === 0) {
-        /* 当前会话没有待分享内容，静默关闭 */
-        var existingPanel2 = document.getElementById("hp-share-panel-ball");
-        if (existingPanel2) { existingPanel2.remove(); _shareBallState.panelVisible = false; }
-        return;
-      }
+      /* 按时间倒序：最新的在最上面 */
+      var sortedShares = shares.slice().sort(function(a, b) { return (b.sharedAt || 0) - (a.sharedAt || 0); });
 
       var overlay = document.createElement("div");
       overlay.id = "hp-share-panel-ball";
@@ -4440,29 +4400,42 @@
       var sheet = document.createElement("div");
       sheet.className = "hp-sheet";
       var html = '<div class="hp-sheet-handle"></div>';
-      html += '<div style="padding:0 16px 4px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">\u6ce8\u5165\u5206\u4eab</div><span style="font-size:12px;color:var(--text-hint)">' + (conversationId ? escapeHtml(conversationId) : "\u5df2\u8fde\u63a5") + (unmatchedCount > 0 ? ' \u00b7 \u5176\u4ed6' + unmatchedCount + '\u4e2a\u4f1a\u8bdd\u5f85\u5206\u4eab' : '') + '</span></div>';
-      html += '<div style="padding:8px 16px;max-height:40vh;overflow-y:auto">';
+      html += '<div style="padding:0 16px 4px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">Hofter \u5206\u4eab</div><span style="font-size:12px;color:var(--text-hint)">' + sortedShares.length + ' \u5f85\u6ce8\u5165</span></div>';
+      /* 搜索框 */
+      html += '<div style="padding:4px 16px 8px"><input id="hp-share-search" type="text" placeholder="\u641c\u7d22\u6807\u9898\u6216CP..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--bg-secondary);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;outline:none;box-sizing:border-box"></div>';
+      /* 全选/取消全选 */
+      html += '<div style="padding:0 16px 4px;display:flex;gap:8px;align-items:center"><button class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px" onclick="var items=document.querySelectorAll(\'.hp-share-ball-item\');for(var i=0;i<items.length;i++){items[i].classList.add(\'selected\');var ck=items[i].querySelector(\'.hp-check\');if(ck)ck.innerHTML=\'<svg width=\\\'14\\\' height=\\\'14\\\' viewBox=\\\'0 0 24 24\\\' fill=\\\'none\\\' stroke=\\\'#fff\\\' stroke-width=\\\'3\\\'><polyline points=\\\'20 6 9 17 4 12\\\'/></svg>\'}">\u5168\u9009</button><button class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px" onclick="var items=document.querySelectorAll(\'.hp-share-ball-item\');for(var i=0;i<items.length;i++){items[i].classList.remove(\'selected\');var ck=items[i].querySelector(\'.hp-check\');if(ck)ck.innerHTML=\'\'}">\u53d6\u6d88\u5168\u9009</button></div>';
+      html += '<div id="hp-share-ball-list" style="padding:4px 16px;max-height:40vh;overflow-y:auto">';
 
-      for (var i = 0; i < matchedShares.length; i++) {
-        var s = matchedShares[i];
-        html += '<div class="hp-share-ball-item" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--bg-secondary)">';
+      for (var i = 0; i < sortedShares.length; i++) {
+        var s = sortedShares[i];
+        html += '<div class="hp-share-ball-item" data-share-id="' + s.id + '" data-search-text="' + escapeHtml((s.title || "") + " " + (s.cpTagName || "")).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--bg-secondary);cursor:pointer" onclick="var ck=this.querySelector(\'.hp-check\');if(this.classList.contains(\'selected\')){this.classList.remove(\'selected\');if(ck)ck.innerHTML=\'\'}else{this.classList.add(\'selected\');if(ck)ck.innerHTML=\'<svg width=\\\'14\\\' height=\\\'14\\\' viewBox=\\\'0 0 24 24\\\' fill=\\\'none\\\' stroke=\\\'#fff\\\' stroke-width=\\\'3\\\'><polyline points=\\\'20 6 9 17 4 12\\\'/></svg>\'}">';
+        html += '<div class="hp-check" style="width:20px;height:20px;border-radius:4px;border:2px solid var(--bg-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>';
         html += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">' + escapeHtml(s.title || "\u65e0\u6807\u9898") + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px">' + (s.cpTagName ? escapeHtml(s.cpTagName) + " \u00b7 " : "") + (s.sendSummary ? "\u5185\u5bb9\u603b\u7ed3" : "\u6b63\u6587") + '</div></div>';
-        html += '<div style="display:flex;gap:6px;flex-shrink:0">';
-        html += '<button class="hp-btn hp-btn-sm hp-btn-primary" style="font-size:12px;padding:4px 10px" onclick="window.__hofter.injectShareFromBall(\'' + s.id + '\')">\u5206\u4eab</button>';
-        if (s.memoryText) {
-          html += '<button class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:12px;padding:4px 10px" onclick="window.__hofter.injectMemoryFromBall(\'' + s.id + '\')">\u8bb0\u5fc6</button>';
-        }
-        html += '</div></div>';
+        html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px">' + (s.cpTagName ? escapeHtml(s.cpTagName) + " \u00b7 " : "") + (s.sendSummary ? "\u5185\u5bb9\u603b\u7ed3" : "\u6b63\u6587") + (s.convName ? " \u00b7 " + escapeHtml(s.convName) : "") + '</div></div>';
+        html += '</div>';
       }
 
       html += '</div>';
-      html += '<div style="padding:8px 16px;text-align:center"><button class="hp-btn hp-btn-outline" style="width:100%" onclick="document.getElementById(\'hp-share-panel-ball\').remove();_shareBallState.panelVisible=false">\u5173\u95ed</button></div>';
+      /* 底部操作栏 */
+      html += '<div style="padding:8px 16px;display:flex;gap:8px"><button class="hp-btn hp-btn-primary" style="flex:1" onclick="window.__hofter.batchInjectShares()">\u6ce8\u5165\u9009\u4e2d</button><button class="hp-btn hp-btn-outline" style="flex:1" onclick="document.getElementById(\'hp-share-panel-ball\').remove();_shareBallState.panelVisible=false">\u5173\u95ed</button></div>';
       sheet.innerHTML = html;
       overlay.appendChild(sheet);
       document.body.appendChild(overlay);
 
-      /* 面板事件 stopPropagation */
+      /* 搜索功能 */
+      var searchInput = document.getElementById("hp-share-search");
+      if (searchInput) {
+        searchInput.oninput = function() {
+          var keyword = this.value.toLowerCase();
+          var items = document.querySelectorAll(".hp-share-ball-item");
+          for (var j = 0; j < items.length; j++) {
+            var searchText = items[j].getAttribute("data-search-text") || "";
+            items[j].style.display = searchText.indexOf(keyword) >= 0 ? "" : "none";
+          }
+        };
+      }
+
       panelEventBlock(sheet);
       _shareBallState.panelVisible = true;
       _shareBallState._panel = overlay;
@@ -4479,46 +4452,28 @@
   }
 
   function checkAndShowShareBall() {
+    /* 用户手动关闭后不再自动弹出，直到有新的分享加入 */
+    if (_shareBallState._userDismissed) return;
     getPendingShares().then(function(shares) {
       if (shares.length > 0) {
         debugLog("checkAndShowShareBall: " + shares.length + " pending shares found");
-        /* 只在聊天页才显示悬浮球 */
-        if (isInChatPage()) {
-          var conversationId = getCurrentConversationId();
-          /* 检查是否有与当前会话匹配的 pending shares */
-          var hasMatch = false;
-          for (var i = 0; i < shares.length; i++) {
-            if (!shares[i].conversationId || shares[i].conversationId === conversationId) {
-              hasMatch = true;
-              break;
-            }
-          }
-          if (hasMatch) {
-            renderShareBall();
-            updateShareBadge(shares.length);
-          } else {
-            debugLog("checkAndShowShareBall: no matching shares for current conversation");
-          }
-        } else {
-          debugLog("checkAndShowShareBall: not in chat page, ball hidden until user enters chat");
-        }
+        renderShareBall();
+        updateShareBadge(shares.length);
       } else {
         debugLog("checkAndShowShareBall: no pending shares");
       }
     });
   }
 
-  /* ─── URL 变化监听：确保插件关闭后导航到聊天页时悬浮球仍能出现 ─── */
+  /* ─── URL 变化监听：确保插件关闭后悬浮球仍能出现 ─── */
   var _lastCheckedUrl = "";
   function _onUrlChange() {
     var currentUrl = window.location.pathname;
     if (currentUrl === _lastCheckedUrl) return;
     _lastCheckedUrl = currentUrl;
-    /* 导航到聊天页面时（URL 或 DOM 检测），检查是否有待分享内容 */
-    if (currentUrl.match(/\/chat\//) || isInChatPage()) {
-      debugLog("URL changed, detected chat page, checking share ball");
-      checkAndShowShareBall();
-    }
+    /* 任何页面变化都检查是否有待分享内容 */
+    debugLog("URL changed, checking share ball");
+    checkAndShowShareBall();
   }
 
   /* hook history.pushState（Vue Router 使用 pushState 导航） */
@@ -5396,13 +5351,12 @@
           state.roche.storage.set("_hofter_pending_shares", jsonStr);
         }
         try { localStorage.setItem("_hofter_pending_shares", jsonStr); } catch(e) {}
-        showToast("\u5df2\u5206\u4eab\u7ed9" + newShares.length + "\u4e2a\u4f1a\u8bdd\uff01\u6253\u5f00\u804a\u5929\u540e\u70b9\u51fb\u60ac\u6d6e\u7403\u6ce8\u5165");
+        showToast("\u5df2\u5206\u4eab\u7ed9" + newShares.length + "\u4e2a\u4f1a\u8bdd");
         debugLog("doShareWork: saved " + newShares.length + " pending shares");
-        /* 如果当前在聊天页，立即渲染悬浮球 */
-        if (isInChatPage()) {
-          renderShareBall();
-          updateShareBadge(shares.length);
-        }
+        /* 新增分享后重置用户关闭状态，确保悬浮球出现 */
+        _shareBallState._userDismissed = false;
+        renderShareBall();
+        updateShareBadge(shares.length);
       });
     },
     continueReading: function() {
@@ -5915,10 +5869,8 @@
           if (shares[i].id === shareId) { item = shares[i]; break; }
         }
         if (!item) { showToast("\u5206\u4eab\u5df2\u8fc7\u671f"); return; }
-        /* 用 DOM 检测判断是否在聊天页，不在聊天页时静默返回 */
-        if (!isInChatPage()) { return; }
         var conversationId = getCurrentConversationId() || "";
-        showToast("\u6b63\u5728\u5206\u4eab...");
+        showToast("\u6b63\u5728\u6ce8\u5165...");
         injectAndSend(item.cardText).then(function(sent) {
           if (!sent) {
             showToast("\u6ce8\u5165\u5931\u8d25\uff0c\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
@@ -5970,6 +5922,67 @@
         });
       });
     },
+    batchInjectShares: function() {
+      var selectedItems = document.querySelectorAll('.hp-share-ball-item.selected');
+      if (selectedItems.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u8981\u6ce8\u5165\u7684\u5206\u4eab"); return; }
+      var ids = [];
+      for (var i = 0; i < selectedItems.length; i++) {
+        ids.push(selectedItems[i].getAttribute("data-share-id"));
+      }
+      var conversationId = getCurrentConversationId() || "";
+      /* 逐个注入，间隔 800ms */
+      var idx = 0;
+      function injectNext() {
+        if (idx >= ids.length) {
+          showToast("\u5168\u90e8\u6ce8\u5165\u5b8c\u6210");
+          var panel = document.getElementById("hp-share-panel-ball");
+          if (panel) { panel.remove(); _shareBallState.panelVisible = false; }
+          return;
+        }
+        var shareId = ids[idx];
+        getPendingShares().then(function(shares) {
+          var item = null;
+          for (var j = 0; j < shares.length; j++) {
+            if (shares[j].id === shareId) { item = shares[j]; break; }
+          }
+          if (!item) { idx++; injectNext(); return; }
+          injectAndSend(item.cardText).then(function(sent) {
+            if (sent) {
+              /* 更新 sharedInfo */
+              item.conversationId = conversationId;
+              var summary = findSummaryById(item.summaryId);
+              if (summary) {
+                var si = {
+                  conversationId: conversationId,
+                  contactId: "",
+                  isGroup: item.isGroup || false,
+                  memberIds: [],
+                  memberProfiles: [],
+                  sharedAt: item.sharedAt,
+                  sendSummary: item.sendSummary,
+                  injectedAt: Date.now(),
+                  processed: false,
+                  detectedAt: null,
+                  lastCharCommentAt: null
+                };
+                if (!summary._sharedConversations) summary._sharedConversations = [];
+                summary._sharedConversations.push(si);
+                if (summary.isByUser) savePublishedWorks(state.publishedWorks); else saveSummariesCache(state.summaries);
+              }
+              /* 自动注入记忆 */
+              if (state.settings.shareMemoryMode === "auto" && item.memoryText) {
+                setTimeout(function() { injectAndSend(item.memoryText); }, 500);
+              }
+              removePendingShare(shareId);
+            }
+            idx++;
+            setTimeout(injectNext, 800);
+          });
+        });
+      }
+      showToast("\u5f00\u59cb\u6ce8\u5165 " + ids.length + " \u6761\u5206\u4eab...");
+      injectNext();
+    },
     setShareMemoryMode: function(mode) {
       var s = getSettings();
       s.shareMemoryMode = mode;
@@ -6002,7 +6015,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.1.0",
+    version: "2.2.0",
     apps: [
       {
         id: "hofter-home",
