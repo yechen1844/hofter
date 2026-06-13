@@ -4224,9 +4224,13 @@
   }
 
   function renderShareBall() {
-    if (_shareBallState.visible) return;
     var existingBall = document.getElementById("hp-share-ball");
+    /* 如果球已在 DOM 中，跳过 */
     if (existingBall && existingBall.parentNode) return;
+    /* 如果 visible=true 但球不在 DOM 中（被 Vue 路由等移除），重置状态允许重建 */
+    if (_shareBallState.visible && !existingBall) {
+      _shareBallState.visible = false;
+    }
     if (existingBall) existingBall.remove();
 
     var ball = document.createElement("div");
@@ -4411,6 +4415,38 @@
       }
     });
   }
+
+  /* ─── URL 变化监听：确保插件关闭后导航到聊天页时悬浮球仍能出现 ─── */
+  var _lastCheckedUrl = "";
+  function _onUrlChange() {
+    var currentUrl = window.location.pathname;
+    if (currentUrl === _lastCheckedUrl) return;
+    _lastCheckedUrl = currentUrl;
+    /* 导航到聊天页面时，检查是否有待分享内容 */
+    if (currentUrl.match(/\/chat\//)) {
+      debugLog("URL changed to chat page, checking share ball");
+      checkAndShowShareBall();
+    }
+  }
+
+  /* hook history.pushState（Vue Router 使用 pushState 导航） */
+  var _origPushState = history.pushState;
+  history.pushState = function() {
+    _origPushState.apply(this, arguments);
+    setTimeout(_onUrlChange, 100);
+  };
+  /* hook history.replaceState */
+  var _origReplaceState = history.replaceState;
+  history.replaceState = function() {
+    _origReplaceState.apply(this, arguments);
+    setTimeout(_onUrlChange, 100);
+  };
+  /* 监听 popstate（浏览器前进/后退） */
+  window.addEventListener("popstate", function() {
+    setTimeout(_onUrlChange, 100);
+  });
+  /* 定时检测兜底（每 2 秒） */
+  setInterval(_onUrlChange, 2000);
 
   function getCurrentConvNameFromSummary(summary) {
     if (!summary || !summary._sharedConversations) return "";
@@ -5216,6 +5252,9 @@
         try { localStorage.setItem("_hofter_pending_shares", jsonStr); } catch(e) {}
         showToast("\u5df2\u5b58\u5165\uff01\u8bf7\u6253\u5f00\u804a\u5929\u540e\u70b9\u51fb\u60ac\u6d6e\u7403\u5206\u4eab");
         debugLog("doShareWork: saved pending share, id=" + pendingShare.id);
+        /* 立即渲染悬浮球，确保用户关闭插件后球仍然可见 */
+        renderShareBall();
+        updateShareBadge(shares.length);
       });
     },
     continueReading: function() {
@@ -5814,7 +5853,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.0.0",
+    version: "2.0.1",
     apps: [
       {
         id: "hofter-home",
@@ -5916,11 +5955,13 @@
             ev.el.removeEventListener(ev.type, ev.fn);
           }
           state.eventListeners = [];
-          /* 清理 document.body 上残留的 hofter 相关元素 */
+          /* 清理 document.body 上残留的 hofter 相关元素（不含悬浮球） */
           var bodyLeftovers = document.querySelectorAll('#hp-debug-panel, #annotation-panel, #hp-context-panel');
           for (var bi = 0; bi < bodyLeftovers.length; bi++) { if (bodyLeftovers[bi].parentNode) bodyLeftovers[bi].parentNode.removeChild(bodyLeftovers[bi]); }
           if (state._chatMsgObserver) { state._chatMsgObserver.disconnect(); state._chatMsgObserver = null; }
           if (container) container.innerHTML = "";
+          /* 关闭插件后确保悬浮球仍然存在（参照 monitor 插件做法） */
+          checkAndShowShareBall();
           console.log('[hofter] unmount done, __hofter still exists:', !!window.__hofter);
           /* 不再 delete window.__hofter，避免重进时 onclick 失效 */
           /* mount 时会无条件重建 */
