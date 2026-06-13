@@ -2930,10 +2930,10 @@
       /* 只拦截真正的交互元素（tabs、按钮），不拦截卡片和普通内容区域 */
       var target = e.target || e.srcElement;
       if (!target) return false;
-      if (target.closest && (target.closest('.hp-tabs') || target.closest('.hp-tab') || target.closest('button') || target.closest('a') || target.closest('[onclick]') || target.closest('.hp-icon-btn') || target.closest('.hp-btn'))) return true;
+      if (target.closest && (target.closest('.hp-tabs') || target.closest('.hp-tab') || target.closest('button') || target.closest('a') || target.closest('[onclick]') || target.closest('.hp-icon-btn') || target.closest('.hp-btn') || target.closest('.hp-card'))) return true;
       /* fallback: 检查className */
       var cn = target.className || "";
-      if (typeof cn === "string" && (cn.indexOf("hp-tab") >= 0 || cn.indexOf("hp-tabs") >= 0 || cn.indexOf("hp-btn") >= 0)) return true;
+      if (typeof cn === "string" && (cn.indexOf("hp-tab") >= 0 || cn.indexOf("hp-tabs") >= 0 || cn.indexOf("hp-btn") >= 0 || cn.indexOf("hp-card") >= 0)) return true;
       return false;
     }
     function onTS(e) {
@@ -2942,14 +2942,14 @@
       startY = e.touches[0].clientY;
       pulling = true;
       currentDiff = 0;
-      createIndicator();
     }
     function onTM(e) {
       if (!pulling) return;
       var diff = e.touches[0].clientY - startY;
       if (diff < 0) { currentDiff = 0; removeIndicator(); return; }
       currentDiff = Math.min(diff * 0.5, MAX_PULL);
-      if (currentDiff > 5) {
+      if (currentDiff > 10) {
+        if (!pullIndicator) createIndicator();
         el.style.transform = "translateY(" + currentDiff + "px)";
         el.style.transition = "none";
         updateIndicator(currentDiff * 2);
@@ -3133,6 +3133,7 @@
       : '<div style="font-size:13px;color:var(--text-hint);padding:8px 0">\u5c1a\u672a\u914d\u7f6e\u8f7b\u578b\u6a21\u578b</div>') +
       '<div class="hp-menu-item" onclick="window.__hofter.showAddModelPreset()">' + ICONS.plus.replace(/24/g,"16") + '<span>\u6dfb\u52a0\u6a21\u578b\u9884\u8bbe</span></div></div>' +
       '<div class="hp-settings-section"><div class="hp-section-title">\u5176\u4ed6</div>' +
+      '<div class="hp-menu-item" onclick="window.__hofter.showShareBall()">' + ICONS.share + '<span>\u663e\u793a\u5206\u4eab\u60ac\u6d6e\u7403</span></div>' +
       '<div class="hp-menu-item" onclick="window.__hofter.confirmClearCache()">' + ICONS.trash + '<span>\u6e05\u9664\u7f13\u5b58</span></div></div>';
     page.appendChild(body); overlay.appendChild(page); state.containerEl.appendChild(overlay);
   }
@@ -4504,15 +4505,13 @@
     });
   }
 
-  /* ─── URL 变化监听：确保插件关闭后悬浮球仍能出现 ─── */
+  /* ─── URL 变化监听（仅用于路由检测，不自动创建悬浮球） ─── */
   var _lastCheckedUrl = "";
   function _onUrlChange() {
     var currentUrl = window.location.pathname;
     if (currentUrl === _lastCheckedUrl) return;
     _lastCheckedUrl = currentUrl;
-    /* 任何页面变化都检查是否有待分享内容 */
-    debugLog("URL changed, checking share ball");
-    checkAndShowShareBall();
+    debugLog("URL changed to: " + currentUrl);
   }
 
   /* hook history.pushState（Vue Router 使用 pushState 导航） */
@@ -4815,6 +4814,11 @@
         var texts = readerBody.querySelectorAll(".hp-reader-text");
         for (var i = 0; i < texts.length; i++) texts[i].style.fontSize = state.fontSize + "px";
       }
+    },
+    showShareBall: function() {
+      _shareBallState._userDismissed = false;
+      checkAndShowShareBall();
+      showToast("\u5df2\u663e\u793a\u5206\u4eab\u60ac\u6d6e\u7403");
     },
     confirmClearCache: function() {
       var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "hp-clear-confirm";
@@ -6054,7 +6058,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.3.1",
+    version: "2.3.2",
     apps: [
       {
         id: "hofter-home",
@@ -6140,9 +6144,7 @@
                 renderApp();
                 /* 启动聊天消息观察器 */
                 startChatMessageObserver();
-                /* 检查是否有待分享的分享悬浮球 */
-                checkAndShowShareBall();
-              }).catch(function() { console.log('[hofter] dataLoad FAILED, calling renderApp anyway'); renderApp(); checkAndShowShareBall(); });
+              }).catch(function() { console.log('[hofter] dataLoad FAILED, calling renderApp anyway'); renderApp(); });
             }).catch(function() { console.log('[hofter] loadData FAILED, calling renderApp anyway'); renderApp(); });
           };
 
@@ -6161,8 +6163,6 @@
           for (var bi = 0; bi < bodyLeftovers.length; bi++) { if (bodyLeftovers[bi].parentNode) bodyLeftovers[bi].parentNode.removeChild(bodyLeftovers[bi]); }
           if (state._chatMsgObserver) { state._chatMsgObserver.disconnect(); state._chatMsgObserver = null; }
           if (container) container.innerHTML = "";
-          /* 关闭插件后确保悬浮球仍然存在（参照 monitor 插件做法） */
-          checkAndShowShareBall();
           console.log('[hofter] unmount done, __hofter still exists:', !!window.__hofter);
           /* 不再 delete window.__hofter，避免重进时 onclick 失效 */
           /* mount 时会无条件重建 */
