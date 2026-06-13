@@ -3721,61 +3721,166 @@
       var vueRouter = probeVueRouter();
       if (vueRouter) {
         debugLog("navigateToChat: Found Vue Router v" + vueRouter.version);
-        /* 尝试多种可能的路径格式 */
-        var paths = [
-          "/chat/" + conversationId,
-          "/conversation/" + conversationId,
-          "/c/" + conversationId
-        ];
-        for (var pi = 0; pi < paths.length; pi++) {
-          try {
-            debugLog("navigateToChat: trying router.push(" + paths[pi] + ")");
-            vueRouter.router.push(paths[pi]);
-            debugLog("navigateToChat: router.push succeeded with " + paths[pi]);
-            /* 等待聊天页面加载 */
-            waitForElement('.chat-input-textarea', 5000).then(function(inputEl) {
-              if (inputEl) {
-                debugLog("navigateToChat: Vue Router jump successful, chat page loaded");
-                resolve(true);
-              } else {
-                debugLog("navigateToChat: Vue Router jump done but no chat input found, trying next method");
-                resolve(false);
-              }
-            });
-            return;
-          } catch(e) {
-            debugLog("navigateToChat: router.push(" + paths[pi] + ") error: " + e.message);
-          }
-        }
-      }
-
-      /* 方案1：history.pushState + popstate */
-      debugLog("navigateToChat: trying history.pushState + popstate");
-      var pushPaths = ["/chat/" + conversationId, "/conversation/" + conversationId];
-      for (var pp = 0; pp < pushPaths.length; pp++) {
         try {
-          history.pushState(null, '', pushPaths[pp]);
-          window.dispatchEvent(new Event('popstate'));
-          debugLog("navigateToChat: pushState + popstate dispatched for " + pushPaths[pp]);
-          /* 检查是否成功跳转 */
-          waitForElement('.chat-input-textarea', 3000).then(function(inputEl) {
-            if (inputEl) {
-              debugLog("navigateToChat: pushState jump successful");
-              resolve(true);
-            } else {
-              debugLog("navigateToChat: pushState didn't work, falling back to DOM click");
-              domClickFallback(conversationId, convName, resolve);
-            }
+          var targetPath = "/chat/" + conversationId;
+          debugLog("navigateToChat: trying router.push(" + targetPath + ")");
+          vueRouter.router.push(targetPath);
+          debugLog("navigateToChat: router.push succeeded");
+          waitForElement('.chat-input-textarea', 5000).then(function(inputEl) {
+            resolve(inputEl ? true : false);
           });
           return;
         } catch(e) {
-          debugLog("navigateToChat: pushState error: " + e.message);
+          debugLog("navigateToChat: router.push error: " + e.message);
         }
       }
 
-      /* 方案2：DOM 点击兜底 */
-      domClickFallback(conversationId, convName, resolve);
+      /* 方案1：先关闭插件，再操作 Roche DOM 导航 */
+      debugLog("navigateToChat: Vue Router not found, using close-then-navigate strategy");
+      closeAndNavigate(conversationId, convName, resolve);
     });
+  }
+
+  /* 关闭插件后导航到目标聊天 */
+  function closeAndNavigate(conversationId, convName, resolve) {
+    /* 先关闭插件，让 Roche UI 可见 */
+    if (state.roche && state.roche.ui && state.roche.ui.closeApp) {
+      debugLog("closeAndNavigate: closing plugin app first");
+      state.roche.ui.closeApp();
+    }
+
+    /* 等待 Roche UI 可交互后开始导航 */
+    setTimeout(function() {
+      debugLog("closeAndNavigate: starting DOM navigation");
+
+      /* 步骤1：检查当前是否在聊天页面，如果是则点返回 */
+      var backBtn = document.querySelector('.chat-header-button--back');
+      if (backBtn) {
+        debugLog("closeAndNavigate: on chat page, clicking back");
+        backBtn.click();
+        /* 等待返回到 inbox */
+        setTimeout(function() {
+          doNavigateInInbox(conversationId, convName, resolve);
+        }, 1000);
+        return;
+      }
+
+      /* 步骤2：检查是否在 inbox 页面 */
+      var convItems = document.querySelectorAll('.conversation-item');
+      if (convItems.length > 0) {
+        debugLog("closeAndNavigate: already on inbox page");
+        doNavigateInInbox(conversationId, convName, resolve);
+        return;
+      }
+
+      /* 步骤3：不在已知页面，尝试点击底部导航的 Inbox */
+      debugLog("closeAndNavigate: trying to find and click inbox nav");
+      var clickedNav = clickInboxNav();
+      if (clickedNav) {
+        setTimeout(function() {
+          doNavigateInInbox(conversationId, convName, resolve);
+        }, 1500);
+      } else {
+        /* 步骤4：最后尝试直接用 URL 跳转 */
+        debugLog("closeAndNavigate: trying direct URL change");
+        try {
+          window.location.href = "/chat/" + conversationId;
+          waitForElement('.chat-input-textarea', 5000).then(function(inputEl) {
+            resolve(inputEl ? true : false);
+          });
+        } catch(e) {
+          debugLog("closeAndNavigate: all methods failed: " + e.message);
+          resolve(false);
+        }
+      }
+    }, 800);
+  }
+
+  /* 在 inbox 页面中查找并点击目标会话 */
+  function doNavigateInInbox(conversationId, convName, resolve) {
+    /* 等待会话列表渲染 */
+    waitForElement('.conversation-item', 5000).then(function() {
+      var convItems = document.querySelectorAll('.conversation-item');
+      debugLog("doNavigateInInbox: found " + convItems.length + " conversation items");
+
+      /* 尝试通过 data 属性匹配 */
+      for (var ci = 0; ci < convItems.length; ci++) {
+        var convEl = convItems[ci];
+        var dataId = convEl.getAttribute('data-id') || convEl.getAttribute('data-conversation-id') || convEl.getAttribute('data-session-id') || "";
+        if (dataId === conversationId) {
+          debugLog("doNavigateInInbox: found by data-id, clicking idx=" + ci);
+          convEl.click();
+          waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
+            resolve(inputEl ? true : false);
+          });
+          return;
+        }
+      }
+
+      /* 尝试通过名称匹配 */
+      for (var ni = 0; ni < convItems.length; ni++) {
+        var nameEl = convItems[ni].querySelector('.conv-name');
+        var convText = nameEl ? nameEl.textContent.trim() : "";
+        if (convName && convText.indexOf(convName) >= 0) {
+          debugLog("doNavigateInInbox: found by name match, clicking idx=" + ni);
+          convItems[ni].click();
+          waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
+            resolve(inputEl ? true : false);
+          });
+          return;
+        }
+      }
+
+      /* 兜底：尝试更宽泛的选择器 */
+      var allListItems = document.querySelectorAll('[data-conversation-id="' + conversationId + '"], [data-id="' + conversationId + '"], [data-session-id="' + conversationId + '"]');
+      if (allListItems.length > 0) {
+        debugLog("doNavigateInInbox: found by fallback data selector");
+        allListItems[0].click();
+        waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
+          resolve(inputEl ? true : false);
+        });
+        return;
+      }
+
+      debugLog("doNavigateInInbox: target conversation not found");
+      resolve(false);
+    });
+  }
+
+  /* 点击底部导航的 Inbox/消息 tab */
+  function clickInboxNav() {
+    /* 尝试多种选择器找到底部导航 */
+    var nav = document.querySelector('.bottom-nav') ||
+              document.querySelector('nav.fixed.bottom-0') ||
+              document.querySelector('nav[class*="bottom"]') ||
+              document.querySelector('[class*="bottom-nav"]');
+    if (!nav) {
+      debugLog("clickInboxNav: no bottom nav found");
+      return false;
+    }
+    debugLog("clickInboxNav: found nav element");
+
+    /* 查找消息/Inbox 按钮 */
+    var buttons = nav.querySelectorAll('button, [role="tab"], a, [class*="nav-item"]');
+    debugLog("clickInboxNav: found " + buttons.length + " nav buttons");
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var text = (btn.textContent || "").trim().toLowerCase();
+      var ariaLabel = (btn.getAttribute('aria-label') || "").toLowerCase();
+      if (text.indexOf("消息") >= 0 || text.indexOf("inbox") >= 0 || text.indexOf("chat") >= 0 ||
+          text.indexOf("message") >= 0 || ariaLabel.indexOf("inbox") >= 0 || ariaLabel.indexOf("chat") >= 0) {
+        debugLog("clickInboxNav: clicking button " + i + " text=" + text);
+        btn.click();
+        return true;
+      }
+    }
+    /* 兜底：点击第二个 tab（通常是消息） */
+    if (buttons.length >= 2) {
+      debugLog("clickInboxNav: fallback clicking button[1]");
+      buttons[1].click();
+      return true;
+    }
+    return false;
   }
 
   /* 探测 Vue Router 实例 */
@@ -3787,15 +3892,16 @@
       /* 方法1: Vue 3 __vue_app__ */
       if (appNode.__vue_app__) {
         var gp = appNode.__vue_app__.config && appNode.__vue_app__.config.globalProperties;
-        if (gp && gp.$router) return { version: 3, router: gp.$router };
+        if (gp && gp.$router) { debugLog("probeVueRouter: found via __vue_app__.config.globalProperties"); return { version: 3, router: gp.$router }; }
         if (appNode.__vue_app__._context && appNode.__vue_app__._context.config && appNode.__vue_app__._context.config.globalProperties) {
           var r = appNode.__vue_app__._context.config.globalProperties.$router;
-          if (r) return { version: 3, router: r };
+          if (r) { debugLog("probeVueRouter: found via __vue_app__._context"); return { version: 3, router: r }; }
         }
       }
 
       /* 方法2: Vue 2 __vue__ */
       if (appNode.__vue__ && appNode.__vue__.$router) {
+        debugLog("probeVueRouter: found via __vue__.$router");
         return { version: 2, router: appNode.__vue__.$router };
       }
 
@@ -3805,29 +3911,58 @@
         var el = allEls[i];
         if (el.__vue_app__) {
           var gp3 = el.__vue_app__.config && el.__vue_app__.config.globalProperties;
-          if (gp3 && gp3.$router) return { version: 3, router: gp3.$router };
+          if (gp3 && gp3.$router) { debugLog("probeVueRouter: found via DOM el __vue_app__"); return { version: 3, router: gp3.$router }; }
         }
         if (el.__vue__ && el.__vue__.$router) {
+          debugLog("probeVueRouter: found via DOM el __vue__");
           return { version: 2, router: el.__vue__.$router };
-        }
-        /* Vue 3 组件实例内部属性 */
-        var elKeys = Object.keys(el).filter(function(k) { return k.indexOf('__vue') >= 0 || k.indexOf('_instance') >= 0; });
-        for (var ki = 0; ki < elKeys.length; ki++) {
-          var val = el[elKeys[ki]];
-          if (val && val.appContext && val.appContext.config && val.appContext.config.globalProperties) {
-            var r2 = val.appContext.config.globalProperties.$router;
-            if (r2) return { version: 3, router: r2 };
-          }
-          if (val && val.proxy && val.proxy.$router) return { version: 3, router: val.proxy.$router };
         }
       }
 
       /* 方法4: 从 _vnode 组件树深入搜索 */
       var vnode = appNode._vnode || appNode.__vnode;
       if (vnode) {
-        var routerFromVnode = searchVnodeForRouter(vnode, 0, 10);
+        debugLog("probeVueRouter: found _vnode, searching component tree...");
+        var routerFromVnode = searchVnodeForRouter(vnode, 0, 15);
         if (routerFromVnode) return routerFromVnode;
       }
+
+      /* 方法5: 遍历 DOM 子元素的内部属性（_instance 等） */
+      var children = appNode.querySelectorAll('*');
+      for (var j = 0; j < Math.min(children.length, 800); j++) {
+        var child = children[j];
+        var keys = Object.keys(child).filter(function(k) { return k.indexOf('__vue') >= 0 || k.indexOf('_vnode') >= 0 || k.indexOf('_instance') >= 0; });
+        if (keys.length > 0) {
+          for (var ki = 0; ki < keys.length; ki++) {
+            var val = child[keys[ki]];
+            if (!val) continue;
+            /* 从 appContext 获取 */
+            if (val.appContext && val.appContext.config && val.appContext.config.globalProperties) {
+              var r2 = val.appContext.config.globalProperties.$router;
+              if (r2) { debugLog("probeVueRouter: found $router via element " + keys[ki] + ".appContext"); return { version: 3, router: r2 }; }
+            }
+            /* 从 proxy 获取 */
+            if (val.proxy && val.proxy.$router) { debugLog("probeVueRouter: found $router via element " + keys[ki] + ".proxy"); return { version: 3, router: val.proxy.$router }; }
+            /* 从 setupState 获取 */
+            if (val.setupState && val.setupState.$router) { debugLog("probeVueRouter: found $router via element " + keys[ki] + ".setupState"); return { version: 3, router: val.setupState.$router }; }
+            /* 从 _instance 组件获取 */
+            if (val.proxy && val.proxy.$options && val.proxy.$options.setup) {
+              var setupResult = val.proxy.$options.setup;
+              /* 检查组件是否注入了 router */
+              if (val.setupState) {
+                for (var sk in val.setupState) {
+                  if (val.setupState[sk] && val.setupState[sk].push && val.setupState[sk].currentRoute) {
+                    debugLog("probeVueRouter: found router-like object in setupState." + sk);
+                    return { version: 3, router: val.setupState[sk] };
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      debugLog("probeVueRouter: Vue Router not found via any method");
     } catch(e) {
       debugLog("probeVueRouter error: " + e.message);
     }
@@ -5246,25 +5381,20 @@
       /* 关闭分享面板 */
       var panel = document.getElementById("hp-share-panel");
       if (panel) panel.remove();
-      /* 先导航，成功后再关闭插件 */
+      /* navigateToChat 内部会关闭插件再导航，导航成功后注入发送 */
       showToast("\u6b63\u5728\u8df3\u8f6c...");
       navigateToChat(conversationId, convName).then(function(navigated) {
         if (!navigated) {
-          showToast("\u8df3\u8f6c\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u6253\u5f00\u804a\u5929");
+          showToast("\u8df3\u8f6c\u5931\u8d25\uff0c\u5185\u5bb9\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
           /* 降级：复制到剪贴板 */
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(cardText).then(function() {
-              showToast("\u5185\u5bb9\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
-            }).catch(function(){});
+            navigator.clipboard.writeText(cardText).catch(function(){});
           }
           return;
         }
-        /* 导航成功，关闭 Hofter 插件 */
-        if (state.roche && state.roche.ui) state.roche.ui.closeApp();
-        /* 延迟后注入发送 */
+        /* 导航成功，延迟后注入发送（插件已在 navigateToChat 中关闭） */
         setTimeout(function() {
           var result = injectAndSend(cardText);
-          /* injectAndSend 可能返回 Promise 或 boolean */
           var handleResult = function(sent) {
             if (sent) {
               sharedInfo.injectedAt = Date.now();
@@ -5281,7 +5411,7 @@
           } else {
             handleResult(result);
           }
-        }, 1000);
+        }, 1500);
       });
     },
     continueReading: function() {
@@ -5804,7 +5934,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.8.1",
+    version: "1.9.0",
     apps: [
       {
         id: "hofter-home",

@@ -1,7 +1,7 @@
 {
   "id": "hofter",
   "name": "Hofter",
-  "version": "1.8.1",
+  "version": "1.9.0",
   "description": "沉浸式同人小说社区 - Lofter风格同人文生成与阅读",
   "author": "yechen1844",
   "entry": "https://raw.githubusercontent.com/yechen1844/hofter/main/plugin.js",
