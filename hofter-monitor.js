@@ -480,7 +480,6 @@
     /* 如果已存在就不重复创建 */
     var existingBall = document.getElementById("hm-ball");
     if (existingBall && existingBall.parentNode) return;
-    /* 如果存在但已脱离DOM，移除引用 */
     if (existingBall) existingBall.remove();
 
     var ball = document.createElement("div");
@@ -489,9 +488,11 @@
     ball.textContent = "M";
     ball.style.left = _state.position.x + "px";
     ball.style.top = _state.position.y + "px";
+
     /* 拖拽状态 */
     var dragMoved = false;
     var isDragging = false;
+    var isTouch = false; /* 标记是否为触摸操作 */
     var startX = 0, startY = 0, posStartX = 0, posStartY = 0;
 
     function onStart(cx, cy) {
@@ -504,7 +505,6 @@
       if (!isDragging) return;
       var dx = cx - startX, dy = cy - startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
-      /* 限制在屏幕范围内 */
       var maxX = window.innerWidth - 44;
       var maxY = window.innerHeight - 44;
       _state.position.x = Math.max(0, Math.min(maxX, posStartX + dx));
@@ -512,45 +512,51 @@
       ball.style.left = _state.position.x + "px";
       ball.style.top = _state.position.y + "px";
     }
-    function onEnd() { isDragging = false; }
+    function onEnd(wasClick) {
+      isDragging = false;
+      if (wasClick && !dragMoved) {
+        togglePanel();
+      }
+    }
 
-    /* 鼠标拖拽 */
+    /* 触摸事件（手机端） */
+    ball.addEventListener("touchstart", function(e) {
+      isTouch = true;
+      var t = e.touches[0];
+      onStart(t.clientX, t.clientY);
+    }, { passive: true });
+    document.addEventListener("touchmove", function(e) {
+      if (!isDragging || !isTouch) return;
+      var t = e.touches[0];
+      onMove(t.clientX, t.clientY);
+    }, { passive: true });
+    document.addEventListener("touchend", function() {
+      if (!isTouch) return;
+      onEnd(true);
+      isTouch = false;
+    });
+
+    /* 鼠标事件（桌面端） */
     ball.addEventListener("mousedown", function(e) {
+      if (isTouch) return; /* 触摸设备忽略鼠标事件 */
       onStart(e.clientX, e.clientY);
       e.preventDefault();
     });
-    document.addEventListener("mousemove", function(e) { onMove(e.clientX, e.clientY); });
-    document.addEventListener("mouseup", function() { onEnd(); });
-
-    /* 触摸拖拽 */
-    var touchHandled = false;
-    ball.addEventListener("touchstart", function(e) {
-      var t = e.touches[0];
-      onStart(t.clientX, t.clientY);
-      touchHandled = false;
-    }, { passive: true });
-    document.addEventListener("touchmove", function(e) {
-      if (!isDragging) return;
-      var t = e.touches[0];
-      onMove(t.clientX, t.clientY);
-      if (dragMoved) touchHandled = true;
-    }, { passive: true });
-    document.addEventListener("touchend", function() {
-      if (isDragging && !dragMoved) {
-        /* 触摸没有移动 = 点击，直接切换面板 */
-        togglePanel();
-        touchHandled = true; /* 阻止后续 click 事件再次触发 */
-      }
-      onEnd();
+    document.addEventListener("mousemove", function(e) {
+      if (!isDragging || isTouch) return;
+      onMove(e.clientX, e.clientY);
+    });
+    document.addEventListener("mouseup", function() {
+      if (isTouch) return;
+      onEnd(true);
     });
 
-    /* 鼠标点击切换面板（仅桌面端） */
-    ball.addEventListener("click", function() {
-      if (dragMoved) { dragMoved = false; return; }
-      /* 如果是触摸设备，touchend 已经处理了，跳过 click */
-      if (touchHandled) { touchHandled = false; return; }
-      togglePanel();
-    });
+    /* 完全不使用 click 事件，避免触摸/鼠标事件竞争 */
+    ball.addEventListener("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }, true);
+
     document.body.appendChild(ball);
 
     /* 监控悬浮球是否被意外移除，自动重建 */
@@ -558,7 +564,6 @@
       _state.ballObserver = new MutationObserver(function() {
         var b = document.getElementById("hm-ball");
         if (!b || !b.parentNode) {
-          /* 悬浮球被移除了，延迟重建 */
           setTimeout(function() { renderBall(); }, 100);
         }
       });
@@ -949,7 +954,7 @@
   window.RochePlugin.register({
     id: PLUGIN_ID,
     name: "Hofter Monitor",
-    version: "1.0.0",
+    version: "1.1.0",
     apps: [
       {
         id: "hofter-monitor-home",
