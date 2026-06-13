@@ -434,10 +434,10 @@
         padding: 12px 16px; background: #16213e; border-bottom: 1px solid #0f3460;
       }
       .hm-panel-title { font-size: 14px; font-weight: 700; color: #e94560; }
-      .hm-panel-actions { display: flex; gap: 8px; }
+      .hm-panel-actions { display: flex; flex-wrap: wrap; gap: 6px; }
       .hm-btn {
         padding: 4px 10px; border-radius: 6px; border: none; cursor: pointer;
-        font-size: 11px; font-weight: 600; transition: background 0.15s;
+        font-size: 11px; font-weight: 600; transition: background 0.15s; white-space: nowrap;
       }
       .hm-btn-primary { background: #e94560; color: #fff; }
       .hm-btn-primary:hover { background: #c73652; }
@@ -486,26 +486,53 @@
     ball.textContent = "M";
     ball.style.left = _state.position.x + "px";
     ball.style.top = _state.position.y + "px";
-    /* 拖拽 */
+    /* 拖拽状态 */
     var dragMoved = false;
-    ball.addEventListener("mousedown", function(e) {
-      _state.dragging = true;
+    var isDragging = false;
+    var startX = 0, startY = 0, posStartX = 0, posStartY = 0;
+
+    function onStart(cx, cy) {
+      isDragging = true;
       dragMoved = false;
-      _state.dragStart = { x: e.clientX, y: e.clientY };
-      _state.posStart = { x: _state.position.x, y: _state.position.y };
-      e.preventDefault();
-    });
-    document.addEventListener("mousemove", function(e) {
-      if (!_state.dragging) return;
-      var dx = e.clientX - _state.dragStart.x;
-      var dy = e.clientY - _state.dragStart.y;
+      startX = cx; startY = cy;
+      posStartX = _state.position.x; posStartY = _state.position.y;
+    }
+    function onMove(cx, cy) {
+      if (!isDragging) return;
+      var dx = cx - startX, dy = cy - startY;
       if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragMoved = true;
-      _state.position.x = _state.posStart.x + dx;
-      _state.position.y = _state.posStart.y + dy;
+      /* 限制在屏幕范围内 */
+      var maxX = window.innerWidth - 44;
+      var maxY = window.innerHeight - 44;
+      _state.position.x = Math.max(0, Math.min(maxX, posStartX + dx));
+      _state.position.y = Math.max(0, Math.min(maxY, posStartY + dy));
       ball.style.left = _state.position.x + "px";
       ball.style.top = _state.position.y + "px";
+    }
+    function onEnd() { isDragging = false; }
+
+    /* 鼠标拖拽 */
+    ball.addEventListener("mousedown", function(e) {
+      onStart(e.clientX, e.clientY);
+      e.preventDefault();
     });
-    document.addEventListener("mouseup", function() { _state.dragging = false; });
+    document.addEventListener("mousemove", function(e) { onMove(e.clientX, e.clientY); });
+    document.addEventListener("mouseup", function() { onEnd(); });
+
+    /* 触摸拖拽 */
+    ball.addEventListener("touchstart", function(e) {
+      var t = e.touches[0];
+      onStart(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    document.addEventListener("touchmove", function(e) {
+      if (!isDragging) return;
+      var t = e.touches[0];
+      onMove(t.clientX, t.clientY);
+      e.preventDefault();
+    }, { passive: false });
+    document.addEventListener("touchend", function() { onEnd(); });
+
     /* 点击切换面板 */
     ball.addEventListener("click", function() {
       if (dragMoved) { dragMoved = false; return; }
@@ -532,15 +559,16 @@
     panel.innerHTML = `
       <div class="hm-panel-header">
         <span class="hm-panel-title">Hofter Monitor</span>
-        <div class="hm-panel-actions">
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.scanDOM()">Scan DOM</button>
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.listConvs()">Convs</button>
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.tryNavChat()">Nav Chat</button>
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.sniffRoutes()">Routes</button>
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.vueJump()">Vue Jump</button>
-          <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.clearLogs()">Clear</button>
-          <button class="hm-btn hm-btn-primary" onclick="window.__hofterMonitor.togglePanel()">X</button>
-        </div>
+        <button class="hm-btn hm-btn-primary" onclick="window.__hofterMonitor.togglePanel()" style="padding:4px 12px">X</button>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;background:#16213e;border-bottom:1px solid #0f3460">
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.scanDOM()">Scan DOM</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.listConvs()">Convs</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.tryNavChat()">Nav Chat</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.sniffRoutes()">Routes</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.vueJump()">Vue Jump</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.copyLogs()">Copy</button>
+        <button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.clearLogs()">Clear</button>
       </div>
       <div class="hm-filter-bar">
         <button class="hm-filter-btn ${_state.filterLevel === 'all' ? 'active' : ''}" onclick="window.__hofterMonitor.setFilter('all')">All</button>
@@ -562,6 +590,28 @@
   window.__hofterMonitor = {
     togglePanel: function() { togglePanel(); },
     clearLogs: function() { _state.logs = []; refreshLogPanel(); addLog("info", "system", "Logs cleared"); },
+    copyLogs: function() {
+      var text = _state.logs.map(function(e) {
+        return e.time + " " + e.level.toUpperCase() + "[" + e.source + "] " + e.message;
+      }).join("\n");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function() {
+          addLog("info", "system", "Logs copied to clipboard (" + _state.logs.length + " entries)");
+        }).catch(function() {
+          addLog("error", "system", "Failed to copy logs");
+        });
+      } else {
+        /* 降级方案 */
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.style.cssText = "position:fixed;left:-9999px";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); addLog("info", "system", "Logs copied (" + _state.logs.length + ")"); }
+        catch(e) { addLog("error", "system", "Copy failed: " + e.message); }
+        document.body.removeChild(ta);
+      }
+    },
     setFilter: function(level) {
       _state.filterLevel = level;
       var btns = document.querySelectorAll(".hm-filter-btn");
@@ -900,11 +950,16 @@
           container.innerHTML = '<div class="' + ROOT_CLASS + '" style="height:100%;min-height:100%;display:flex;flex-direction:column;background:#1a1a2e;color:#e0e0e0;font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;overflow:hidden">' +
             '<div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#16213e;border-bottom:1px solid #0f3460;flex-shrink:0">' +
               '<span style="font-size:16px;font-weight:700;color:#e94560">Hofter Monitor</span>' +
-              '<div style="display:flex;gap:8px">' +
-                '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.scanDOM()">Scan DOM</button>' +
-                '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.listConvs()">Convs</button>' +
-                '<button class="hm-btn hm-btn-primary" onclick="window.__hofterMonitor.closeApp()" style="padding:6px 16px;font-size:13px">\u9000\u51FA</button>' +
-              '</div>' +
+              '<button class="hm-btn hm-btn-primary" onclick="window.__hofterMonitor.closeApp()" style="padding:6px 16px;font-size:13px">\u9000\u51FA</button>' +
+            '</div>' +
+            '<div style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 16px;background:#16213e;border-bottom:1px solid #0f3460;flex-shrink:0">' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.scanDOM()">Scan DOM</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.listConvs()">Convs</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.tryNavChat()">Nav Chat</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.sniffRoutes()">Routes</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.vueJump()">Vue Jump</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.copyLogs()">Copy</button>' +
+              '<button class="hm-btn hm-btn-secondary" onclick="window.__hofterMonitor.clearLogs()">Clear</button>' +
             '</div>' +
             '<div class="hm-filter-bar" style="flex-shrink:0">' +
               '<button class="hm-filter-btn active" onclick="window.__hofterMonitor.setFilter(\'all\')">All</button>' +
