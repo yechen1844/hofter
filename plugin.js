@@ -1060,30 +1060,7 @@
   function saveFandomTags(t) { state.fandomTags = t; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("fandomTags"), t); }
   function saveSummariesCache(a) {
     state.summaries = a;
-    /* 推荐页最多保留100条未生成正文的摘要卡片 */
-    var withoutContent = [];
-    var withContent = [];
-    for (var i = 0; i < state.summaries.length; i++) {
-      if (state.summaries[i].fullContent) withContent.push(state.summaries[i]);
-      else withoutContent.push(state.summaries[i]);
-    }
-    /* 未生成正文的摘要限制100条，超出则删除最旧的（末尾） */
-    if (withoutContent.length > 100) {
-      var removedIds = {};
-      var kept = withoutContent.slice(0, 100);
-      for (var ri = withoutContent.length - 1; ri >= 100; ri--) {
-        removedIds[withoutContent[ri].id] = true;
-      }
-      withoutContent = kept;
-      /* 从state.summaries中移除被删除的摘要（保留有正文的） */
-      var newSummaries = [];
-      for (var si = 0; si < state.summaries.length; si++) {
-        if (state.summaries[si].fullContent || !removedIds[state.summaries[si].id]) {
-          newSummaries.push(state.summaries[si]);
-        }
-      }
-      state.summaries = newSummaries;
-    }
+    /* 数据全部保存，100条限制只在关注界面渲染时生效 */
     if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("summaries_cache"), state.summaries);
   }
   function savePublishedWorks(a) { state.publishedWorks = a; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("published_works"), a); }
@@ -2420,16 +2397,11 @@
 
   /* ─── 首页 ─── */
   var PAGE_SIZE = 20;
+  var FOLLOW_MAX_DISPLAY = 100;
   function loadMoreSummaries(grid) {
     if (!grid || state._homeAllLoaded) return;
-    /* 关注页显示所有摘要，但未生成正文的在前，已生成正文的在后 */
-    var followSummaries = [];
-    var withContent = [];
-    for (var fi = 0; fi < state.summaries.length; fi++) {
-      if (!state.summaries[fi].fullContent) followSummaries.push(state.summaries[fi]);
-      else withContent.push(state.summaries[fi]);
-    }
-    var displayList = followSummaries.concat(withContent);
+    /* 关注页：按时间排序（state.summaries已是新的在前），最多显示100条 */
+    var displayList = state.summaries.slice(0, FOLLOW_MAX_DISPLAY);
     var start = state._homePageEnd || 0;
     var end = Math.min(start + PAGE_SIZE, displayList.length);
     for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(displayList[i]));
@@ -2443,14 +2415,8 @@
     tabs.innerHTML = '<div class="hp-tab ' + (state.homeTab==="follow"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'follow\')">\u5173\u6ce8</div><div class="hp-tab ' + (state.homeTab==="subscribe"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'subscribe\')">\u8ba2\u9605</div>';
     container.appendChild(tabs);
     if (state.homeTab === "follow") {
-      /* 关注页显示所有摘要：未生成正文在前，已生成正文在后 */
-      var followSummaries = [];
-      var withContent = [];
-      for (var fi = 0; fi < state.summaries.length; fi++) {
-        if (!state.summaries[fi].fullContent) followSummaries.push(state.summaries[fi]);
-        else withContent.push(state.summaries[fi]);
-      }
-      var displayList = followSummaries.concat(withContent);
+      /* 关注页：按时间排序（新的在前），最多显示100条 */
+      var displayList = state.summaries.slice(0, FOLLOW_MAX_DISPLAY);
       if (displayList.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
       var grid = document.createElement("div"); grid.className = "hp-card-grid";
       var displayCount = Math.min(displayList.length, PAGE_SIZE);
@@ -2468,7 +2434,7 @@
       }
       var totalInfo = document.createElement("div");
       totalInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
-      totalInfo.textContent = "\u5171 " + displayList.length + " \u7bc7\u63a8\u8350";
+      totalInfo.textContent = "\u5171 " + displayList.length + " \u7bc7\u63a8\u8350" + (state.summaries.length > FOLLOW_MAX_DISPLAY ? " (\u5171" + state.summaries.length + "\u7bc7)" : "");
       container.appendChild(totalInfo);
     } else {
       var readSummaries = [];
@@ -6416,7 +6382,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.8.1",
+    version: "2.8.2",
     apps: [
       {
         id: "hofter-home",
