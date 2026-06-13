@@ -2927,13 +2927,13 @@
       if (text) text.textContent = diff >= THRESHOLD ? "\u91ca\u653e\u5237\u65b0" : "\u4e0b\u62c9\u5237\u65b0";
     }
     function isTabOrClickable(e) {
-      /* 检查事件目标是否在tabs、按钮、链接、卡片等可点击元素内，避免拦截点击 */
+      /* 只拦截真正的交互元素（tabs、按钮），不拦截卡片和普通内容区域 */
       var target = e.target || e.srcElement;
       if (!target) return false;
-      if (target.closest && (target.closest('.hp-tabs') || target.closest('.hp-tab') || target.closest('button') || target.closest('a') || target.closest('[onclick]') || target.closest('.hp-channel-item') || target.closest('.hp-icon-btn') || target.closest('.hp-card') || target.closest('.hp-card-batch-checkbox') || target.closest('.hp-tag') || target.closest('.hp-tag-item') || target.closest('.hp-btn'))) return true;
+      if (target.closest && (target.closest('.hp-tabs') || target.closest('.hp-tab') || target.closest('button') || target.closest('a') || target.closest('[onclick]') || target.closest('.hp-icon-btn') || target.closest('.hp-btn'))) return true;
       /* fallback: 检查className */
       var cn = target.className || "";
-      if (typeof cn === "string" && (cn.indexOf("hp-tab") >= 0 || cn.indexOf("hp-tabs") >= 0 || cn.indexOf("hp-channel") >= 0 || cn.indexOf("hp-card") >= 0 || cn.indexOf("hp-tag") >= 0 || cn.indexOf("hp-btn") >= 0)) return true;
+      if (typeof cn === "string" && (cn.indexOf("hp-tab") >= 0 || cn.indexOf("hp-tabs") >= 0 || cn.indexOf("hp-btn") >= 0)) return true;
       return false;
     }
     function onTS(e) {
@@ -3639,18 +3639,17 @@
     var cpName = summary.cpTagName || "";
     var author = summary.author || "\u533f\u540d";
     var isByUser = summary.isByUser || false;
-    var text = "[Hofter\u540c\u4eba\u793e\u533a\u5206\u4eab]\n";
-    text += userName + "\u5411\u60a8\u5206\u4eab\u4e86\u4e00\u7bc7\u540c\u4eba\u6587\u7ae0\n\n";
-    text += "\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\n";
-    text += "\u300a" + (summary.title || "\u65e0\u6807\u9898") + "\u300b\n";
-    text += "\u4f5c\u8005\uff1a" + author + (isByUser ? "\uff08\u7528\u6237\u521b\u4f5c\uff09" : "") + "\n";
-    if (cpName) text += "CP\uff1a" + cpName + "\n";
-    text += "\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\n\n";
+    /* 使用 [HF]...[/HF] 标记包裹，方便正则捕捉 */
+    var text = "[HF]";
+    text += "[TITLE]" + (summary.title || "\u65e0\u6807\u9898") + "[/TITLE]";
+    text += "[AUTHOR]" + author + (isByUser ? "(\u7528\u6237\u521b\u4f5c)" : "") + "[/AUTHOR]";
+    if (cpName) text += "[CP]" + cpName + "[/CP]";
+    text += "[USER]" + userName + "[/USER]";
     /* L1摘要始终包含 */
     var excerpt = summary.excerpt || summary.summary || "";
-    if (excerpt) text += "\u3010\u6458\u8981\u3011\n" + excerpt + "\n\n";
+    if (excerpt) text += "[EXCERPT]" + excerpt + "[/EXCERPT]";
     if (sendSummary && summary.contentSummary) {
-      text += "\u3010\u5185\u5bb9\u603b\u7ed3\u3011\n" + summary.contentSummary + "\n";
+      text += "[SUMMARY]" + summary.contentSummary + "[/SUMMARY]";
     } else if (!sendSummary && summary.fullContent) {
       var chapters = summary.fullContent.chapters || [];
       var fullText = "";
@@ -3664,7 +3663,7 @@
           }
         }
       }
-      if (fullText.trim()) text += "\u3010\u5b8c\u6574\u6b63\u6587\u3011\n" + fullText.trim() + "\n";
+      if (fullText.trim()) text += "[FULLTEXT]" + fullText.trim() + "[/FULLTEXT]";
     }
     /* 拼入用户评论 */
     if (summary.fullContent && summary.fullContent.comments) {
@@ -3674,14 +3673,14 @@
         var cName = c.name || "\u533f\u540d";
         var isUser = (cName === userName);
         if (isUser || c.isCharacter) {
-          userComments.push(cName + (isUser ? "\uff08\u5206\u4eab\u8005\uff09" : "") + "\uff1a" + (c.text || ""));
+          userComments.push("[COMMENT author=\"" + cName + (isUser ? "(\u5206\u4eab\u8005)" : "") + "\"]" + (c.text || "") + "[/COMMENT]");
         }
       }
       if (userComments.length > 0) {
-        text += "\n\u254c\u254c \u76f8\u5173\u8bc4\u8bba \u254c\u254c\n" + userComments.join("\n") + "\n";
+        text += "[COMMENTS]" + userComments.join("") + "[/COMMENTS]";
       }
     }
-    text += "\n\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c";
+    text += "[/HF]";
     return text;
   }
 
@@ -4275,7 +4274,8 @@
 
     /* 关闭按钮 */
     var closeBtn = document.createElement("div");
-    closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;line-height:1";
+    closeBtn.id = "hp-share-ball-close";
+    closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;line-height:1";
     closeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     closeBtn.onclick = function(e) {
       e.stopPropagation();
@@ -4347,6 +4347,8 @@
     });
 
     ball.addEventListener("click", function(e) {
+      /* 允许关闭按钮的点击事件通过 */
+      if (e.target.closest && e.target.closest("#hp-share-ball-close")) return;
       e.preventDefault();
       e.stopPropagation();
     }, true);
@@ -6052,7 +6054,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.3.0",
+    version: "2.3.1",
     apps: [
       {
         id: "hofter-home",
