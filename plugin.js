@@ -1060,7 +1060,37 @@
   function saveFandomTags(t) { state.fandomTags = t; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("fandomTags"), t); }
   function saveSummariesCache(a) {
     state.summaries = a;
-    /* 数据全部保存，100条限制只在关注界面渲染时生效 */
+    /* 清理超出100条限制的未生成正文且未收藏/稍后读的摘要 */
+    var withoutContent = [];
+    for (var i = 0; i < state.summaries.length; i++) {
+      if (!state.summaries[i].fullContent) withoutContent.push(state.summaries[i]);
+    }
+    if (withoutContent.length > 100) {
+      /* 构建已保护ID集合：收藏+稍后读 */
+      var protectedIds = {};
+      for (var fi = 0; fi < state.favorites.length; fi++) protectedIds[state.favorites[fi].id] = true;
+      for (var ri = 0; ri < state.readLater.length; ri++) protectedIds[state.readLater[ri].id] = true;
+      /* 从后往前检查，删除超出100条且未保护的摘要 */
+      var kept = 0;
+      var newSummaries = [];
+      for (var si = 0; si < state.summaries.length; si++) {
+        var s = state.summaries[si];
+        if (s.fullContent) {
+          /* 已生成正文的全部保留 */
+          newSummaries.push(s);
+        } else if (protectedIds[s.id]) {
+          /* 已收藏/稍后读的全部保留 */
+          newSummaries.push(s);
+        } else {
+          kept++;
+          if (kept <= 100) {
+            newSummaries.push(s);
+          }
+          /* 超过100条的未保护摘要直接删除 */
+        }
+      }
+      state.summaries = newSummaries;
+    }
     if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("summaries_cache"), state.summaries);
   }
   function savePublishedWorks(a) { state.publishedWorks = a; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("published_works"), a); }
@@ -2272,6 +2302,7 @@
           '<span>' + commentIcon + comments + '</span>' +
           (words ? '<span>' + words + '\u5b57</span>' : '') +
           '<span>' + escapeHtml(timeAgo) + '</span>' +
+          '<span class="hp-card-readlater-btn" onclick="event.stopPropagation();window.__hofter.saveToReadLater(\'' + summary.id + '\')" title="\u6536\u85cf\u5230\u7a0d\u540e\u8bfb" style="margin-left:auto;cursor:pointer;opacity:0.5;font-size:14px">' + ICONS.bookmark + '</span>' +
         '</div>' +
       '</div>';
     card.onclick = function() {
@@ -2400,13 +2431,12 @@
   var FOLLOW_MAX_DISPLAY = 100;
   function loadMoreSummaries(grid) {
     if (!grid || state._homeAllLoaded) return;
-    /* 关注页：按时间排序（state.summaries已是新的在前），最多显示100条 */
-    var displayList = state.summaries.slice(0, FOLLOW_MAX_DISPLAY);
+    /* 关注页：按时间排序（state.summaries已是新的在前），数据层已处理100条限制 */
     var start = state._homePageEnd || 0;
-    var end = Math.min(start + PAGE_SIZE, displayList.length);
-    for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(displayList[i]));
+    var end = Math.min(start + PAGE_SIZE, state.summaries.length);
+    for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(state.summaries[i]));
     state._homePageEnd = end;
-    state._homeAllLoaded = end >= displayList.length;
+    state._homeAllLoaded = end >= state.summaries.length;
     var moreBtn = document.getElementById("hp-load-more");
     if (state._homeAllLoaded && moreBtn) moreBtn.remove();
   }
@@ -2415,14 +2445,13 @@
     tabs.innerHTML = '<div class="hp-tab ' + (state.homeTab==="follow"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'follow\')">\u5173\u6ce8</div><div class="hp-tab ' + (state.homeTab==="subscribe"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'subscribe\')">\u8ba2\u9605</div>';
     container.appendChild(tabs);
     if (state.homeTab === "follow") {
-      /* 关注页：按时间排序（新的在前），最多显示100条 */
-      var displayList = state.summaries.slice(0, FOLLOW_MAX_DISPLAY);
-      if (displayList.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
+      /* 关注页：按时间排序（新的在前），数据层已处理100条限制 */
+      if (state.summaries.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
       var grid = document.createElement("div"); grid.className = "hp-card-grid";
-      var displayCount = Math.min(displayList.length, PAGE_SIZE);
+      var displayCount = Math.min(state.summaries.length, PAGE_SIZE);
       state._homePageEnd = displayCount;
-      state._homeAllLoaded = displayCount >= displayList.length;
-      for (var i = 0; i < displayCount; i++) grid.appendChild(createSummaryCard(displayList[i]));
+      state._homeAllLoaded = displayCount >= state.summaries.length;
+      for (var i = 0; i < displayCount; i++) grid.appendChild(createSummaryCard(state.summaries[i]));
       container.appendChild(grid);
       if (!state._homeAllLoaded) {
         var moreBtn = document.createElement("div");
@@ -2434,7 +2463,7 @@
       }
       var totalInfo = document.createElement("div");
       totalInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
-      totalInfo.textContent = "\u5171 " + displayList.length + " \u7bc7\u63a8\u8350" + (state.summaries.length > FOLLOW_MAX_DISPLAY ? " (\u5171" + state.summaries.length + "\u7bc7)" : "");
+      totalInfo.textContent = "\u5171 " + state.summaries.length + " \u7bc7\u63a8\u8350";
       container.appendChild(totalInfo);
     } else {
       var readSummaries = [];
@@ -5325,6 +5354,31 @@
       }
       saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
     },
+    saveToReadLater: function(summaryId) {
+      /* 从关注页摘要卡片直接收藏到稍后读 */
+      var summary = null;
+      for (var i = 0; i < state.summaries.length; i++) {
+        if (state.summaries[i].id === summaryId) { summary = state.summaries[i]; break; }
+      }
+      if (!summary) { showToast("\u672a\u627e\u5230\u6458\u8981"); return; }
+      var idx = -1;
+      for (var j = 0; j < state.readLater.length; j++) { if (state.readLater[j].id === summaryId) { idx = j; break; } }
+      if (idx >= 0) {
+        showToast("\u5df2\u5728\u7a0d\u540e\u8bfb\u4e2d");
+        return;
+      }
+      state.readLater.unshift({id:summary.id, title:summary.title, author:summary.author, cpTagName:summary.cpTagName, excerpt:summary.excerpt, coverGradient:summary.coverGradient, likes:summary.likes, comments:summary.comments, words:summary.words, timeAgo:summary.timeAgo});
+      saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
+      showToast("\u5df2\u6536\u85cf\u5230\u7a0d\u540e\u8bfb");
+      /* 更新按钮样式 */
+      var btns = document.querySelectorAll('.hp-card-readlater-btn');
+      for (var k = 0; k < btns.length; k++) {
+        if (btns[k].getAttribute('onclick') && btns[k].getAttribute('onclick').indexOf(summaryId) >= 0) {
+          btns[k].style.opacity = '1';
+          btns[k].style.color = 'var(--accent)';
+        }
+      }
+    },
     toggleReadLater: function() {
       var summary = state.currentReadingSummary;
       if (!summary) { showToast("\u65e0\u6cd5\u64cd\u4f5c"); return; }
@@ -6382,7 +6436,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.8.2",
+    version: "2.8.3",
     apps: [
       {
         id: "hofter-home",
