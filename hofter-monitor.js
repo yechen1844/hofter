@@ -407,16 +407,25 @@
       addLog("info", "dom-scan", "=== Deep DOM Scan ===");
       /* 1. 扫描所有可能的聊天列表元素 */
       var selectors = [
+        /* Roche 真实 CSS 钩子 */
+        '.conversation-item', '.conv-name', '.conv-preview', '.conversation-avatar',
+        '.inbox-header', '.inbox-title', '.search-input',
+        '.chat-header-avatar', '.chat-header-title', '.chat-header-online',
+        '.chat-header-button--back', '.chat-header-button--search', '.chat-header-button--settings',
+        '.chat-input-textarea', '.chat-input-plus', '.chat-input-send', '.chat-input-heart',
+        '.chat-input-bar', '.chat-input-field', '.chat-glass-surface',
+        '.chat-message', '.chat-message--sent', '.chat-message--received',
+        '.chat-message-avatar', '.chat-card', '.bubble-sent', '.bubble-received',
+        '.chat-scroll-area', '.chat-plus-panel', '.chat-plus-action',
+        '.floating-preset-button', '.bottom-nav',
+        /* 通用选择器 */
         '[class*="sidebar"]', '[class*="chat-list"]', '[class*="conv-list"]',
-        '[class*="session-list"]', '[class*="contact-list"]', '[class*="message-list"]',
-        'nav', 'aside', '[role="navigation"]', '[role="complementary"]',
-        '[class*="list-item"]', '[class*="chat-item"]', '[class*="conv-item"]',
-        '[data-id]', '[data-conversation-id]', '[data-session-id"]',
+        'nav', 'aside', '[role="navigation"]',
+        '[data-id]', '[data-conversation-id]', '[data-session-id]',
         '[class*="router"]', '[class*="view"]', '[class*="page"]',
         '[class*="app"]', '[class*="main"]', '[class*="content"]',
         '[class*="frame"]', '[class*="container"]', '[class*="layout"]',
-        '[class*="dialog"]', '[class*="modal"]', '[class*="overlay"]',
-        'iframe', '[class*="iframe"]', '[class*="embed"]'
+        'iframe'
       ];
       for (var s = 0; s < selectors.length; s++) {
         var els = document.querySelectorAll(selectors[s]);

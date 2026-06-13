@@ -3687,34 +3687,39 @@
       }
     }
 
-    /* 方案1：DOM操作点击侧边栏 */
-    var sidebarSelectors = [
-      '[class*="sidebar"]', '[class*="chat-list"]', '[class*="conv-list"]',
-      '[class*="contact-list"]', '[class*="session-list"]', '[class*="message-list"]',
-      'nav', 'aside', '[role="navigation"]', '[role="complementary"]'
-    ];
-    for (var si = 0; si < sidebarSelectors.length; si++) {
-      var sidebarEl = document.querySelector(sidebarSelectors[si]);
-      if (sidebarEl) {
-        debugLog("Found sidebar: " + sidebarSelectors[si] + " children=" + sidebarEl.children.length + " classes=" + sidebarEl.className.substring(0, 80));
+    /* 方案1：DOM操作 — 基于 Roche 真实 CSS 钩子 */
+    /* Roche 会话列表使用 .conversation-item，内部有 .conv-name */
+    var convItems = document.querySelectorAll('.conversation-item');
+    debugLog("Found .conversation-item: " + convItems.length);
+    for (var ci = 0; ci < convItems.length; ci++) {
+      var convEl = convItems[ci];
+      var nameEl = convEl.querySelector('.conv-name');
+      var convText = nameEl ? nameEl.textContent.trim() : (convEl.textContent || "").substring(0, 30);
+      var convDataId = convEl.getAttribute('data-id') || convEl.getAttribute('data-conversation-id') || "";
+      debugLog("conv[" + ci + "] dataId=" + convDataId + " name=" + convText);
+      if (convDataId === conversationId || convText.indexOf(convName) >= 0) {
+        debugLog("Clicking .conversation-item idx=" + ci);
+        convEl.click();
+        return true;
       }
     }
 
+    /* 通用兜底：尝试其他选择器 */
     var selectors = [
-      '[class*="chat-item"]', '[class*="conversation-item"]', '[class*="contact"]',
-      '[class*="chat-list"] > *', '[class*="conv-list"] > *',
-      '[data-conversation-id]', '[data-conv-id]',
-      '[class*="session-item"]', '[class*="message-item"]',
-      '[class*="sidebar"] [class*="item"]', '[class*="sidebar"] > * > *'
+      '.conversation-item', '[class*="conversation-item"]',
+      '[data-conversation-id]', '[data-conv-id]', '[data-id]',
+      '[class*="chat-item"]', '[class*="contact-item"]',
+      'main.flex-1.overflow-y-auto > div.flex.items-center'
     ];
     for (var s = 0; s < selectors.length; s++) {
       var items = document.querySelectorAll(selectors[s]);
-      debugLog("Selector " + selectors[s] + " found " + items.length + " items");
+      if (items.length > 0) debugLog("Selector " + selectors[s] + " found " + items.length + " items");
       for (var i = 0; i < items.length; i++) {
         var item = items[i];
         var itemId = item.getAttribute('data-id') || item.getAttribute('data-conversation-id') || item.getAttribute('data-conv-id') || item.getAttribute('data-session-id') || "";
-        var itemText = (item.textContent || "").substring(0, 30);
-        if (itemId === conversationId || itemText.indexOf(convName) >= 0) {
+        var nameInItem = item.querySelector('.conv-name');
+        var itemText = nameInItem ? nameInItem.textContent.trim() : (item.textContent || "").substring(0, 30);
+        if (itemId === conversationId || (convName && itemText.indexOf(convName) >= 0)) {
           debugLog("Clicking item: " + selectors[s] + " idx=" + i + " id=" + itemId + " text=" + itemText);
           item.click();
           return true;
@@ -3745,10 +3750,17 @@
   }
 
   function findChatInput() {
+    /* 基于 Roche 真实 CSS 钩子：.chat-input-textarea */
     var selectors = [
-      'textarea[class*="chat"]', 'textarea[class*="input"]', 'textarea[class*="message"]',
-      '[contenteditable="true"][class*="chat"]', '[contenteditable="true"][class*="input"]',
-      '.chat-input textarea', '.message-input textarea'
+      '.chat-input-textarea',
+      'textarea.chat-input-textarea',
+      '.chat-input-field textarea',
+      '.chat-input-bar textarea',
+      '.chat-glass-surface textarea',
+      'textarea[placeholder="Type your thought..."]',
+      '.fixed.bottom-0 textarea',
+      'textarea[class*="chat"]',
+      'textarea[class*="input"]'
     ];
     for (var i = 0; i < selectors.length; i++) {
       var el = document.querySelector(selectors[i]);
