@@ -4156,10 +4156,47 @@
   };
 
   function getCurrentConversationId() {
+    /* 方法1: 从 URL pathname 中提取 */
     var path = window.location.pathname;
     var match = path.match(/\/chat\/(c_\d+)/);
     if (match) return match[1];
+    /* 方法2: 从 URL hash 中提取（部分路由可能用 hash） */
+    var hash = window.location.hash;
+    var hashMatch = hash.match(/\/chat\/(c_\d+)/);
+    if (hashMatch) return hashMatch[1];
+    /* 方法3: 从 DOM 中查找带会话 ID 的元素属性 */
+    var dataIdEl = document.querySelector('[data-conversation-id]');
+    if (dataIdEl) {
+      var cid = dataIdEl.getAttribute('data-conversation-id');
+      if (cid) return cid;
+    }
+    var dataIdEl2 = document.querySelector('[data-session-id]');
+    if (dataIdEl2) {
+      var sid = dataIdEl2.getAttribute('data-session-id');
+      if (sid) return sid;
+    }
+    /* 方法4: 从聊天消息的 data 属性中提取 */
+    var senderEl = document.querySelector('[data-sender-id]');
+    if (senderEl) {
+      /* 消息存在说明在聊天页，但无法直接获取 conversationId，返回占位符 */
+      return null;
+    }
     return null;
+  }
+
+  /* 检测当前是否在聊天页面（不依赖 URL，纯 DOM 检测） */
+  function isInChatPage() {
+    /* 1. 检测聊天输入框 */
+    if (document.querySelector('.chat-input-textarea')) return true;
+    /* 2. 检测聊天头部 */
+    if (document.querySelector('.chat-header-title')) return true;
+    /* 3. 检测聊天消息 */
+    if (document.querySelector('.chat-message')) return true;
+    /* 4. 检测发送按钮 */
+    if (document.querySelector('.chat-input-send')) return true;
+    /* 5. 检测 URL */
+    if (window.location.pathname.match(/\/chat\//)) return true;
+    return false;
   }
 
   function getPendingShares() {
@@ -4345,12 +4382,12 @@
   }
 
   function renderSharePanel() {
-    /* 检查是否在聊天页面 */
-    var conversationId = getCurrentConversationId();
-    if (!conversationId) {
+    /* 检查是否在聊天页面（DOM 检测优先，URL 兜底） */
+    if (!isInChatPage()) {
       showToast("\u8bf7\u5148\u6253\u5f00\u804a\u5929\u754c\u9762");
       return;
     }
+    var conversationId = getCurrentConversationId();
 
     getPendingShares().then(function(shares) {
       if (shares.length === 0) {
@@ -4367,7 +4404,7 @@
       var sheet = document.createElement("div");
       sheet.className = "hp-sheet";
       var html = '<div class="hp-sheet-handle"></div>';
-      html += '<div style="padding:0 16px 4px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">\u5206\u4eab\u6587\u7ae0</div><span style="font-size:12px;color:var(--text-hint)">\u5f53\u524d\u4f1a\u8bdd: ' + escapeHtml(conversationId) + '</span></div>';
+      html += '<div style="padding:0 16px 4px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">\u5206\u4eab\u6587\u7ae0</div><span style="font-size:12px;color:var(--text-hint)">\u5f53\u524d\u4f1a\u8bdd: ' + (conversationId ? escapeHtml(conversationId) : "\u5df2\u8fde\u63a5") + '</span></div>';
       html += '<div style="padding:8px 16px;max-height:40vh;overflow-y:auto">';
 
       for (var i = 0; i < shares.length; i++) {
@@ -4422,9 +4459,9 @@
     var currentUrl = window.location.pathname;
     if (currentUrl === _lastCheckedUrl) return;
     _lastCheckedUrl = currentUrl;
-    /* 导航到聊天页面时，检查是否有待分享内容 */
-    if (currentUrl.match(/\/chat\//)) {
-      debugLog("URL changed to chat page, checking share ball");
+    /* 导航到聊天页面时（URL 或 DOM 检测），检查是否有待分享内容 */
+    if (currentUrl.match(/\/chat\//) || isInChatPage()) {
+      debugLog("URL changed, detected chat page, checking share ball");
       checkAndShowShareBall();
     }
   }
@@ -5767,8 +5804,9 @@
           if (shares[i].id === shareId) { item = shares[i]; break; }
         }
         if (!item) { showToast("\u5206\u4eab\u5df2\u8fc7\u671f"); return; }
-        var conversationId = getCurrentConversationId();
-        if (!conversationId) { showToast("\u8bf7\u5148\u6253\u5f00\u804a\u5929\u754c\u9762"); return; }
+        /* 用 DOM 检测判断是否在聊天页，不再仅依赖 URL */
+        if (!isInChatPage()) { showToast("\u8bf7\u5148\u6253\u5f00\u804a\u5929\u754c\u9762"); return; }
+        var conversationId = getCurrentConversationId() || "";
         showToast("\u6b63\u5728\u5206\u4eab...");
         injectAndSend(item.cardText).then(function(sent) {
           if (!sent) {
