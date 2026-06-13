@@ -659,13 +659,18 @@
     }
   }
 
+  var _lastToggleTime = 0;
   function togglePanel() {
+    /* 防抖：300ms 内只允许一次切换，防止 touchend+mouseup 双触发 */
+    var now = Date.now();
+    if (now - _lastToggleTime < 300) return;
+    _lastToggleTime = now;
+
     if (_state.panelVisible) {
       var panel = document.getElementById("hm-panel");
       if (panel) panel.remove();
       _state.panelVisible = false;
     } else {
-      /* 先清除可能残留的旧面板 */
       var oldPanels = document.querySelectorAll('#hm-panel');
       for (var i = 0; i < oldPanels.length; i++) oldPanels[i].remove();
       renderPanel();
@@ -680,6 +685,11 @@
     var panel = document.createElement("div");
     panel.className = "hm-panel";
     panel.id = "hm-panel";
+    /* 阻止面板内点击事件冒泡到 document，防止被 Roche 或其他监听器拦截 */
+    panel.addEventListener("touchstart", function(e) { e.stopPropagation(); }, { passive: true });
+    panel.addEventListener("touchmove", function(e) { e.stopPropagation(); }, { passive: true });
+    panel.addEventListener("mousedown", function(e) { e.stopPropagation(); });
+    panel.addEventListener("click", function(e) { e.stopPropagation(); });
     panel.innerHTML = `
       <div class="hm-panel-header">
         <span class="hm-panel-title">Hofter Monitor</span>
