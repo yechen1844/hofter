@@ -256,62 +256,150 @@
   /* 探测 Vue Router 实例 */
   function probeVueRouter() {
     try {
-      /* Vue 3: __vue_app__ */
       var appNode = document.querySelector('#app') || document.body.firstElementChild;
       if (!appNode) return null;
 
-      /* Vue 3 */
-      var vueApp = appNode.__vue_app__;
-      if (vueApp) {
-        var router = vueApp.config && vueApp.config.globalProperties && vueApp.config.globalProperties.$router;
-        if (router) {
-          var routes = "";
-          if (router.getRoutes) {
-            var routeList = router.getRoutes();
-            routes = routeList.map(function(r) { return r.path; }).join(", ");
-          } else if (router.options && router.options.routes) {
-            routes = router.options.routes.map(function(r) { return r.path; }).join(", ");
-          }
-          var currentRoute = router.currentRoute && router.currentRoute.value ? router.currentRoute.value.path : "";
-          return { version: 3, currentRoute: currentRoute, routes: routes, router: router };
-        }
+      /* 方法1: Vue 3 __vue_app__ */
+      if (appNode.__vue_app__) {
+        var router = extractRouterFromVue3App(appNode.__vue_app__);
+        if (router) return router;
       }
 
-      /* Vue 2: __vue__ */
-      var vue2 = appNode.__vue__;
-      if (vue2 && vue2.$router) {
-        var router2 = vue2.$router;
-        var routes2 = "";
-        if (router2.options && router2.options.routes) {
-          routes2 = router2.options.routes.map(function(r) { return r.path; }).join(", ");
-        }
-        var currentRoute2 = router2.currentRoute ? router2.currentRoute.path : "";
-        return { version: 2, currentRoute: currentRoute2, routes: routes2, router: router2 };
+      /* 方法2: Vue 2 __vue__ */
+      if (appNode.__vue__ && appNode.__vue__.$router) {
+        return extractRouterFromVue2(appNode.__vue__);
       }
 
-      /* 遍历所有 DOM 元素寻找 Vue 实例 */
+      /* 方法3: 遍历 DOM 寻找 Vue 实例 */
       var allEls = document.querySelectorAll('*');
-      for (var i = 0; i < Math.min(allEls.length, 200); i++) {
+      for (var i = 0; i < Math.min(allEls.length, 500); i++) {
         var el = allEls[i];
         if (el.__vue_app__) {
-          var r3 = el.__vue_app__.config && el.__vue_app__.config.globalProperties && el.__vue_app__.config.globalProperties.$router;
-          if (r3) {
-            var cr3 = r3.currentRoute && r3.currentRoute.value ? r3.currentRoute.value.path : "";
-            var rt3 = r3.getRoutes ? r3.getRoutes().map(function(x) { return x.path; }).join(", ") : "";
-            return { version: 3, currentRoute: cr3, routes: rt3, router: r3 };
-          }
+          var r3 = extractRouterFromVue3App(el.__vue_app__);
+          if (r3) return r3;
         }
         if (el.__vue__ && el.__vue__.$router) {
-          var r2 = el.__vue__.$router;
-          var cr2 = r2.currentRoute ? r2.currentRoute.path : "";
-          var rt2 = r2.options && r2.options.routes ? r2.options.routes.map(function(x) { return x.path; }).join(", ") : "";
-          return { version: 2, currentRoute: cr2, routes: rt2, router: r2 };
+          return extractRouterFromVue2(el.__vue__);
         }
       }
+
+      /* 方法4: 从 Vue 3 组件实例内部属性查找 */
+      /* Vue 3 生产构建可能移除 __vue_app__，但组件实例可能还在 */
+      var vnode = appNode._vnode || appNode.__vnode;
+      if (vnode) {
+        addLog("info", "route-sniffer", "Found _vnode on #app, probing component tree...");
+        var comp = vnode.component;
+        if (comp) {
+          var routerFromComp = extractRouterFromComponent(comp);
+          if (routerFromComp) return routerFromComp;
+        }
+      }
+
+      /* 方法5: 遍历 #app 子元素的内部属性 */
+      var children = appNode.querySelectorAll('*');
+      for (var j = 0; j < Math.min(children.length, 500); j++) {
+        var child = children[j];
+        /* Vue 3 内部属性 */
+        var keys = Object.keys(child).filter(function(k) { return k.indexOf('__vue') >= 0 || k.indexOf('_vnode') >= 0 || k.indexOf('_instance') >= 0; });
+        if (keys.length > 0) {
+          addLog("info", "route-sniffer", "Element " + child.tagName + "." + (child.className || "").substring(0, 30) + " has Vue keys: " + keys.join(", "));
+          for (var ki = 0; ki < keys.length; ki++) {
+            var val = child[keys[ki]];
+            if (val && val.$router) {
+              return extractRouterFromVue2(val);
+            }
+            if (val && val.config && val.config.globalProperties && val.config.globalProperties.$router) {
+              return extractRouterFromVue3App(val);
+            }
+            /* Vue 3 组件实例 */
+            if (val && val.proxy && val.proxy.$router) {
+              return extractRouterFromVue2(val.proxy);
+            }
+            if (val && val.appContext && val.appContext.config && val.appContext.config.globalProperties) {
+              var r = val.appContext.config.globalProperties.$router;
+              if (r) {
+                addLog("info", "route-sniffer", "Found $router via appContext!");
+                return formatRouterInfo(3, r);
+              }
+            }
+          }
+        }
+      }
+
+      /* 方法6: 检查 window 上的 Vue 相关全局变量 */
+      var windowKeys = Object.keys(window).filter(function(k) {
+        return k.indexOf('vue') >= 0 || k.indexOf('Vue') >= 0 || k.indexOf('router') >= 0 || k.indexOf('Router') >= 0;
+      });
+      if (windowKeys.length > 0) {
+        addLog("info", "route-sniffer", "Window Vue keys: " + windowKeys.join(", "));
+      }
+
+      addLog("warn", "route-sniffer", "Vue Router not found via any method");
     } catch(e) {
       addLog("error", "route-sniffer", "probeVueRouter error: " + e.message);
     }
     return null;
+  }
+
+  function extractRouterFromVue3App(vueApp) {
+    try {
+      var gp = vueApp.config && vueApp.config.globalProperties;
+      if (gp && gp.$router) {
+        return formatRouterInfo(3, gp.$router);
+      }
+      /* 从 _context 中查找 */
+      if (vueApp._context && vueApp._context.config && vueApp._context.config.globalProperties) {
+        var r = vueApp._context.config.globalProperties.$router;
+        if (r) return formatRouterInfo(3, r);
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function extractRouterFromVue2(vueInstance) {
+    try {
+      if (vueInstance.$router) {
+        return formatRouterInfo(2, vueInstance.$router);
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function extractRouterFromComponent(comp) {
+    try {
+      if (!comp) return null;
+      /* 从 appContext 获取 */
+      if (comp.appContext && comp.appContext.config && comp.appContext.config.globalProperties) {
+        var r = comp.appContext.config.globalProperties.$router;
+        if (r) return formatRouterInfo(3, r);
+      }
+      /* 从 proxy 获取 */
+      if (comp.proxy && comp.proxy.$router) {
+        return formatRouterInfo(3, comp.proxy.$router);
+      }
+      /* 递归子组件 */
+      if (comp.subTree && comp.subTree.component) {
+        var childResult = extractRouterFromComponent(comp.subTree.component);
+        if (childResult) return childResult;
+      }
+    } catch(e) {}
+    return null;
+  }
+
+  function formatRouterInfo(version, router) {
+    var routes = "";
+    try {
+      if (router.getRoutes) {
+        routes = router.getRoutes().map(function(r) { return r.path; }).join(", ");
+      } else if (router.options && router.options.routes) {
+        routes = router.options.routes.map(function(r) { return r.path; }).join(", ");
+      }
+    } catch(e) {}
+    var currentRoute = "";
+    try {
+      currentRoute = router.currentRoute && router.currentRoute.value ? router.currentRoute.value.path : (router.currentRoute ? router.currentRoute.path : "");
+    } catch(e) {}
+    return { version: version, currentRoute: currentRoute, routes: routes, router: router };
   }
 
   function doVueJump(targetPath, convId) {
@@ -577,12 +665,18 @@
       if (panel) panel.remove();
       _state.panelVisible = false;
     } else {
+      /* 先清除可能残留的旧面板 */
+      var oldPanels = document.querySelectorAll('#hm-panel');
+      for (var i = 0; i < oldPanels.length; i++) oldPanels[i].remove();
       renderPanel();
       _state.panelVisible = true;
     }
   }
 
   function renderPanel() {
+    /* 防止重复创建 */
+    var existing = document.getElementById("hm-panel");
+    if (existing) return;
     var panel = document.createElement("div");
     panel.className = "hm-panel";
     panel.id = "hm-panel";
@@ -954,7 +1048,7 @@
   window.RochePlugin.register({
     id: PLUGIN_ID,
     name: "Hofter Monitor",
-    version: "1.1.0",
+    version: "1.2.0",
     apps: [
       {
         id: "hofter-monitor-home",

@@ -1,12 +1,17 @@
 {
   "id": "hofter-monitor",
   "name": "Hofter Monitor",
-  "version": "1.1.0",
-  "description": "前台监控悬浮球控制台 - 监控DOM变化、会话列表、网络请求",
+  "version": "1.2.0",
+  "description": "前台监控悬浮球控制台 - 监控DOM变化、会话列表、路由嗅探、Vue Router劫持",
   "author": "yechen1844",
   "entry": "https://raw.githubusercontent.com/yechen1844/hofter/main/hofter-monitor.js",
   "hash": "",
   "permissions": [
+    "persona:read",
+    "character:read",
+    "memory:read",
+    "worldbook:read",
+    "ai:chat",
     "storage",
     "ui"
   ]
