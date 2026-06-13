@@ -2569,7 +2569,20 @@
   }
 
   function renderExploreTagsList(container, tags) {
-    var categories = {trope: "\u540c\u4eba\u6897", style: "\u98ce\u683c\u7c7b\u578b", literary: "\u6587\u5b66\u5f15\u7528"};
+    var categories = {
+      syndrome: "超自然微设定",
+      au: "平行宇宙AU",
+      timeline: "宿命重构",
+      angst: "极致情感",
+      object: "意象微物",
+      literary: "文学母题",
+      role: "身份互换",
+      canon: "温情日常",
+      /* 兼容旧分类名 */
+      trope: "同人梗",
+      style: "风格类型"
+    };
+    var catOrder = ["canon", "au", "syndrome", "angst", "timeline", "object", "literary", "role", "trope", "style"];
     var grouped = {};
     for (var i = 0; i < tags.length; i++) {
       var cat = tags[i].category || "trope";
@@ -2577,9 +2590,8 @@
       grouped[cat].push(tags[i]);
     }
     var html = "";
-    var catKeys = ["trope", "style", "literary"];
-    for (var c = 0; c < catKeys.length; c++) {
-      var key = catKeys[c];
+    for (var c = 0; c < catOrder.length; c++) {
+      var key = catOrder[c];
       if (!grouped[key] || grouped[key].length === 0) continue;
       html += '<div class="hp-explore-category">' + (categories[key] || key) + '<span>' + grouped[key].length + '\u4e2a</span></div>';
       html += '<div class="hp-explore-wrap">';
@@ -2983,7 +2995,20 @@
   }
 
   function doRefresh() {
-    if (state.isLoading) return; _lastRefreshTime = Date.now(); debugLog("doRefresh start"); showLoading();
+    if (state.isLoading) return; _lastRefreshTime = Date.now(); debugLog("doRefresh start, currentTab=" + state.tab + ", discoverTab=" + state.discoverTab);
+    /* 在 explore tab 下拉时，刷新标签探索而非生成摘要 */
+    if (state.tab === "discover" && state.discoverTab === "explore") {
+      debugLog("doRefresh: explore tab detected, calling loadExploreTags");
+      window.__hofter.loadExploreTags();
+      return;
+    }
+    /* 在 hot tab 下拉时，也不应该生成摘要（hot tab 展示的是已有标签） */
+    if (state.tab === "discover" && state.discoverTab === "hot") {
+      debugLog("doRefresh: hot tab detected, nothing to refresh");
+      showToast("\u70ed\u95e8\u6807\u7b7e\u9875\u65e0\u9700\u5237\u65b0");
+      return;
+    }
+    showLoading();
     var lockTag = state.currentTagPage || null;
     var timeout = setTimeout(function() { hideLoading(); showToast("\u751f\u6210\u8d85\u65f6\uff0c\u8bf7\u91cd\u8bd5"); }, 300000);
     generateLayer1Summaries(lockTag, function(summaries) {
@@ -5779,7 +5804,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.8.0",
+    version: "1.8.1",
     apps: [
       {
         id: "hofter-home",
