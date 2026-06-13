@@ -3735,152 +3735,17 @@
         }
       }
 
-      /* 方案1：先关闭插件，再操作 Roche DOM 导航 */
-      debugLog("navigateToChat: Vue Router not found, using close-then-navigate strategy");
-      closeAndNavigate(conversationId, convName, resolve);
+      /* 方案1：整页跳转（最可靠） */
+      /* Vue Router 找不到时，用 window.location.href 强制整页跳转 */
+      /* Vue Router 在页面加载时会读取 URL 并渲染对应页面 */
+      debugLog("navigateToChat: Vue Router not found, using full page navigation");
+      var targetUrl = "/chat/" + conversationId;
+      debugLog("navigateToChat: navigating to " + targetUrl);
+      window.location.href = targetUrl;
+      /* 整页跳转后当前 JS 上下文会丢失，resolve 不会被调用 */
+      /* 但 doShareWork 会在跳转前把文本存到 roche.storage */
+      /* 页面重新加载后 autoInjectAfterNav 会自动注入 */
     });
-  }
-
-  /* 关闭插件后导航到目标聊天 */
-  function closeAndNavigate(conversationId, convName, resolve) {
-    /* 先关闭插件，让 Roche UI 可见 */
-    if (state.roche && state.roche.ui && state.roche.ui.closeApp) {
-      debugLog("closeAndNavigate: closing plugin app first");
-      state.roche.ui.closeApp();
-    }
-
-    /* 等待 Roche UI 可交互后开始导航 */
-    setTimeout(function() {
-      debugLog("closeAndNavigate: starting DOM navigation");
-
-      /* 步骤1：检查当前是否在聊天页面，如果是则点返回 */
-      var backBtn = document.querySelector('.chat-header-button--back');
-      if (backBtn) {
-        debugLog("closeAndNavigate: on chat page, clicking back");
-        backBtn.click();
-        /* 等待返回到 inbox */
-        setTimeout(function() {
-          doNavigateInInbox(conversationId, convName, resolve);
-        }, 1000);
-        return;
-      }
-
-      /* 步骤2：检查是否在 inbox 页面 */
-      var convItems = document.querySelectorAll('.conversation-item');
-      if (convItems.length > 0) {
-        debugLog("closeAndNavigate: already on inbox page");
-        doNavigateInInbox(conversationId, convName, resolve);
-        return;
-      }
-
-      /* 步骤3：不在已知页面，尝试点击底部导航的 Inbox */
-      debugLog("closeAndNavigate: trying to find and click inbox nav");
-      var clickedNav = clickInboxNav();
-      if (clickedNav) {
-        setTimeout(function() {
-          doNavigateInInbox(conversationId, convName, resolve);
-        }, 1500);
-      } else {
-        /* 步骤4：最后尝试直接用 URL 跳转 */
-        debugLog("closeAndNavigate: trying direct URL change");
-        try {
-          window.location.href = "/chat/" + conversationId;
-          waitForElement('.chat-input-textarea', 5000).then(function(inputEl) {
-            resolve(inputEl ? true : false);
-          });
-        } catch(e) {
-          debugLog("closeAndNavigate: all methods failed: " + e.message);
-          resolve(false);
-        }
-      }
-    }, 800);
-  }
-
-  /* 在 inbox 页面中查找并点击目标会话 */
-  function doNavigateInInbox(conversationId, convName, resolve) {
-    /* 等待会话列表渲染 */
-    waitForElement('.conversation-item', 5000).then(function() {
-      var convItems = document.querySelectorAll('.conversation-item');
-      debugLog("doNavigateInInbox: found " + convItems.length + " conversation items");
-
-      /* 尝试通过 data 属性匹配 */
-      for (var ci = 0; ci < convItems.length; ci++) {
-        var convEl = convItems[ci];
-        var dataId = convEl.getAttribute('data-id') || convEl.getAttribute('data-conversation-id') || convEl.getAttribute('data-session-id') || "";
-        if (dataId === conversationId) {
-          debugLog("doNavigateInInbox: found by data-id, clicking idx=" + ci);
-          convEl.click();
-          waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
-            resolve(inputEl ? true : false);
-          });
-          return;
-        }
-      }
-
-      /* 尝试通过名称匹配 */
-      for (var ni = 0; ni < convItems.length; ni++) {
-        var nameEl = convItems[ni].querySelector('.conv-name');
-        var convText = nameEl ? nameEl.textContent.trim() : "";
-        if (convName && convText.indexOf(convName) >= 0) {
-          debugLog("doNavigateInInbox: found by name match, clicking idx=" + ni);
-          convItems[ni].click();
-          waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
-            resolve(inputEl ? true : false);
-          });
-          return;
-        }
-      }
-
-      /* 兜底：尝试更宽泛的选择器 */
-      var allListItems = document.querySelectorAll('[data-conversation-id="' + conversationId + '"], [data-id="' + conversationId + '"], [data-session-id="' + conversationId + '"]');
-      if (allListItems.length > 0) {
-        debugLog("doNavigateInInbox: found by fallback data selector");
-        allListItems[0].click();
-        waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
-          resolve(inputEl ? true : false);
-        });
-        return;
-      }
-
-      debugLog("doNavigateInInbox: target conversation not found");
-      resolve(false);
-    });
-  }
-
-  /* 点击底部导航的 Inbox/消息 tab */
-  function clickInboxNav() {
-    /* 尝试多种选择器找到底部导航 */
-    var nav = document.querySelector('.bottom-nav') ||
-              document.querySelector('nav.fixed.bottom-0') ||
-              document.querySelector('nav[class*="bottom"]') ||
-              document.querySelector('[class*="bottom-nav"]');
-    if (!nav) {
-      debugLog("clickInboxNav: no bottom nav found");
-      return false;
-    }
-    debugLog("clickInboxNav: found nav element");
-
-    /* 查找消息/Inbox 按钮 */
-    var buttons = nav.querySelectorAll('button, [role="tab"], a, [class*="nav-item"]');
-    debugLog("clickInboxNav: found " + buttons.length + " nav buttons");
-    for (var i = 0; i < buttons.length; i++) {
-      var btn = buttons[i];
-      var text = (btn.textContent || "").trim().toLowerCase();
-      var ariaLabel = (btn.getAttribute('aria-label') || "").toLowerCase();
-      if (text.indexOf("消息") >= 0 || text.indexOf("inbox") >= 0 || text.indexOf("chat") >= 0 ||
-          text.indexOf("message") >= 0 || ariaLabel.indexOf("inbox") >= 0 || ariaLabel.indexOf("chat") >= 0) {
-        debugLog("clickInboxNav: clicking button " + i + " text=" + text);
-        btn.click();
-        return true;
-      }
-    }
-    /* 兜底：点击第二个 tab（通常是消息） */
-    if (buttons.length >= 2) {
-      debugLog("clickInboxNav: fallback clicking button[1]");
-      buttons[1].click();
-      return true;
-    }
-    return false;
   }
 
   /* 探测 Vue Router 实例 */
@@ -4153,6 +4018,65 @@
       if (!allTa[j].closest('.' + ROOT_CLASS)) return allTa[j];
     }
     return null;
+  }
+
+  /* 整页跳转后自动注入分享文本 */
+  function autoInjectAfterNav() {
+    /* 从 roche.storage 或 localStorage 读取 pending share */
+    var tryInject = function(pendingStr) {
+      if (!pendingStr) return false;
+      try {
+        var pending = JSON.parse(pendingStr);
+        if (!pending || !pending.cardText) return false;
+        /* 检查是否过期（5分钟内有效） */
+        if (Date.now() - pending.sharedAt > 300000) {
+          debugLog("autoInjectAfterNav: pending share expired");
+          return false;
+        }
+        debugLog("autoInjectAfterNav: found pending share for " + (pending.convName || pending.conversationId));
+        /* 等待聊天输入框出现后注入 */
+        waitForElement('.chat-input-textarea', 10000).then(function(inputEl) {
+          if (inputEl) {
+            debugLog("autoInjectAfterNav: found chat input, injecting...");
+            var result = doInject(inputEl, pending.cardText);
+            if (result) {
+              showToast("\u5206\u4eab\u6210\u529f\uff01");
+            } else {
+              showToast("\u6ce8\u5165\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u7c98\u8d34");
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(pending.cardText).catch(function(){});
+              }
+            }
+          } else {
+            debugLog("autoInjectAfterNav: chat input not found, copying to clipboard");
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(pending.cardText).then(function() {
+                showToast("\u804a\u5929\u8f93\u5165\u672a\u627e\u5230\uff0c\u5185\u5bb9\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
+              }).catch(function(){});
+            }
+          }
+          /* 清除 pending share */
+          if (state.roche && state.roche.storage) state.roche.storage.delete("_hofter_pending_share");
+          try { localStorage.removeItem("_hofter_pending_share"); } catch(e) {}
+        });
+        return true;
+      } catch(e) {
+        debugLog("autoInjectAfterNav: parse error: " + e.message);
+        return false;
+      }
+    };
+
+    /* 先尝试 localStorage（更快，同步） */
+    var localStr = null;
+    try { localStr = localStorage.getItem("_hofter_pending_share"); } catch(e) {}
+    if (tryInject(localStr)) return;
+
+    /* 再尝试 roche.storage（异步） */
+    if (state.roche && state.roche.storage) {
+      state.roche.storage.get("_hofter_pending_share").then(function(v) {
+        if (v) tryInject(typeof v === 'string' ? v : JSON.stringify(v));
+      }).catch(function(){});
+    }
   }
 
   function injectAndSend(text) {
@@ -5381,7 +5305,19 @@
       /* 关闭分享面板 */
       var panel = document.getElementById("hp-share-panel");
       if (panel) panel.remove();
-      /* navigateToChat 内部会关闭插件再导航，导航成功后注入发送 */
+      /* 先把分享文本存到 roche.storage，整页跳转后可以自动注入 */
+      var pendingShare = {
+        conversationId: conversationId,
+        convName: convName,
+        cardText: cardText,
+        sharedAt: Date.now()
+      };
+      if (state.roche && state.roche.storage) {
+        state.roche.storage.set("_hofter_pending_share", JSON.stringify(pendingShare));
+        debugLog("doShareWork: saved pending share to roche.storage");
+      }
+      /* 也存到 localStorage 作为备份 */
+      try { localStorage.setItem("_hofter_pending_share", JSON.stringify(pendingShare)); } catch(e) {}
       showToast("\u6b63\u5728\u8df3\u8f6c...");
       navigateToChat(conversationId, convName).then(function(navigated) {
         if (!navigated) {
@@ -5392,13 +5328,16 @@
           }
           return;
         }
-        /* 导航成功，延迟后注入发送（插件已在 navigateToChat 中关闭） */
+        /* 导航成功，延迟后注入发送 */
         setTimeout(function() {
           var result = injectAndSend(cardText);
           var handleResult = function(sent) {
             if (sent) {
               sharedInfo.injectedAt = Date.now();
               showToast("\u5206\u4eab\u6210\u529f\uff01");
+              /* 清除 pending share */
+              if (state.roche && state.roche.storage) state.roche.storage.delete("_hofter_pending_share");
+              try { localStorage.removeItem("_hofter_pending_share"); } catch(e) {}
             } else {
               showToast("\u81ea\u52a8\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u7c98\u8d34");
               if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -5934,7 +5873,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "1.9.0",
+    version: "1.9.1",
     apps: [
       {
         id: "hofter-home",
@@ -6020,7 +5959,9 @@
                 renderApp();
                 /* 启动聊天消息观察器 */
                 startChatMessageObserver();
-              }).catch(function() { console.log('[hofter] dataLoad FAILED, calling renderApp anyway'); renderApp(); });
+                /* 检查是否有待注入的分享文本（整页跳转后恢复） */
+                autoInjectAfterNav();
+              }).catch(function() { console.log('[hofter] dataLoad FAILED, calling renderApp anyway'); renderApp(); autoInjectAfterNav(); });
             }).catch(function() { console.log('[hofter] loadData FAILED, calling renderApp anyway'); renderApp(); });
           };
 
