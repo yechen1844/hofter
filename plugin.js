@@ -4308,6 +4308,7 @@
       ball.style.top = _shareBallState.position.y + "px";
     }
     function onEnd(wasClick) {
+      if (!_shareBallState._isDragging) return;
       _shareBallState._isDragging = false;
       if (wasClick && !_shareBallState._dragMoved) {
         toggleSharePanel();
@@ -4395,7 +4396,6 @@
       var overlay = document.createElement("div");
       overlay.id = "hp-share-panel-ball";
       overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:flex-end;justify-content:center";
-      overlay.onclick = function(e) { if (e.target === overlay) { overlay.remove(); _shareBallState.panelVisible = false; } };
 
       var sheet = document.createElement("div");
       sheet.className = "hp-sheet";
@@ -4404,12 +4404,14 @@
       /* 搜索框 */
       html += '<div style="padding:4px 16px 8px"><input id="hp-share-search" type="text" placeholder="\u641c\u7d22\u6807\u9898\u6216CP..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--bg-secondary);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;outline:none;box-sizing:border-box"></div>';
       /* 全选/取消全选 */
-      html += '<div style="padding:0 16px 4px;display:flex;gap:8px;align-items:center"><button class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px" onclick="var items=document.querySelectorAll(\'.hp-share-ball-item\');for(var i=0;i<items.length;i++){items[i].classList.add(\'selected\');var ck=items[i].querySelector(\'.hp-check\');if(ck)ck.innerHTML=\'<svg width=\\\'14\\\' height=\\\'14\\\' viewBox=\\\'0 0 24 24\\\' fill=\\\'none\\\' stroke=\\\'#fff\\\' stroke-width=\\\'3\\\'><polyline points=\\\'20 6 9 17 4 12\\\'/></svg>\'}">\u5168\u9009</button><button class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px" onclick="var items=document.querySelectorAll(\'.hp-share-ball-item\');for(var i=0;i<items.length;i++){items[i].classList.remove(\'selected\');var ck=items[i].querySelector(\'.hp-check\');if(ck)ck.innerHTML=\'\'}">\u53d6\u6d88\u5168\u9009</button></div>';
+      html += '<div style="padding:0 16px 4px;display:flex;gap:8px;align-items:center"><button id="hp-share-select-all" class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px">\u5168\u9009</button><button id="hp-share-deselect-all" class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px">\u53d6\u6d88\u5168\u9009</button></div>';
       html += '<div id="hp-share-ball-list" style="padding:4px 16px;max-height:40vh;overflow-y:auto">';
+
+      var checkSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
 
       for (var i = 0; i < sortedShares.length; i++) {
         var s = sortedShares[i];
-        html += '<div class="hp-share-ball-item" data-share-id="' + s.id + '" data-search-text="' + escapeHtml((s.title || "") + " " + (s.cpTagName || "")).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--bg-secondary);cursor:pointer" onclick="var ck=this.querySelector(\'.hp-check\');if(this.classList.contains(\'selected\')){this.classList.remove(\'selected\');if(ck)ck.innerHTML=\'\'}else{this.classList.add(\'selected\');if(ck)ck.innerHTML=\'<svg width=\\\'14\\\' height=\\\'14\\\' viewBox=\\\'0 0 24 24\\\' fill=\\\'none\\\' stroke=\\\'#fff\\\' stroke-width=\\\'3\\\'><polyline points=\\\'20 6 9 17 4 12\\\'/></svg>\'}">';
+        html += '<div class="hp-share-ball-item" data-share-id="' + s.id + '" data-search-text="' + escapeHtml((s.title || "") + " " + (s.cpTagName || "")).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--bg-secondary);cursor:pointer">';
         html += '<div class="hp-check" style="width:20px;height:20px;border-radius:4px;border:2px solid var(--bg-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>';
         html += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">' + escapeHtml(s.title || "\u65e0\u6807\u9898") + '</div>';
         html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px">' + (s.cpTagName ? escapeHtml(s.cpTagName) + " \u00b7 " : "") + (s.sendSummary ? "\u5185\u5bb9\u603b\u7ed3" : "\u6b63\u6587") + (s.convName ? " \u00b7 " + escapeHtml(s.convName) : "") + '</div></div>';
@@ -4418,22 +4420,59 @@
 
       html += '</div>';
       /* 底部操作栏 */
-      html += '<div style="padding:8px 16px;display:flex;gap:8px"><button class="hp-btn hp-btn-primary" style="flex:1" onclick="window.__hofter.batchInjectShares()">\u6ce8\u5165\u9009\u4e2d</button><button class="hp-btn hp-btn-outline" style="flex:1" onclick="document.getElementById(\'hp-share-panel-ball\').remove();_shareBallState.panelVisible=false">\u5173\u95ed</button></div>';
+      html += '<div style="padding:8px 16px;display:flex;gap:8px"><button id="hp-share-inject-btn" class="hp-btn hp-btn-primary" style="flex:1">\u6ce8\u5165\u9009\u4e2d</button><button id="hp-share-close-btn" class="hp-btn hp-btn-outline" style="flex:1">\u5173\u95ed</button></div>';
       sheet.innerHTML = html;
       overlay.appendChild(sheet);
       document.body.appendChild(overlay);
 
+      /* 事件绑定（替代 inline onclick） */
+      /* 点击遮罩关闭 */
+      overlay.addEventListener("click", function(e) {
+        if (e.target === overlay) { overlay.remove(); _shareBallState.panelVisible = false; }
+      });
+      /* 关闭按钮 */
+      var closeBtn = document.getElementById("hp-share-close-btn");
+      if (closeBtn) closeBtn.addEventListener("click", function() { overlay.remove(); _shareBallState.panelVisible = false; });
+      /* 注入按钮 */
+      var injectBtn = document.getElementById("hp-share-inject-btn");
+      if (injectBtn) injectBtn.addEventListener("click", function() { window.__hofter.batchInjectShares(); });
+      /* 全选 */
+      var selectAllBtn = document.getElementById("hp-share-select-all");
+      if (selectAllBtn) selectAllBtn.addEventListener("click", function() {
+        var items = document.querySelectorAll(".hp-share-ball-item");
+        for (var k = 0; k < items.length; k++) { items[k].classList.add("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) ck.innerHTML = checkSvg; }
+      });
+      /* 取消全选 */
+      var deselectAllBtn = document.getElementById("hp-share-deselect-all");
+      if (deselectAllBtn) deselectAllBtn.addEventListener("click", function() {
+        var items = document.querySelectorAll(".hp-share-ball-item");
+        for (var k = 0; k < items.length; k++) { items[k].classList.remove("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) ck.innerHTML = ""; }
+      });
+      /* 列表项点击切换选中 */
+      var listEl = document.getElementById("hp-share-ball-list");
+      if (listEl) listEl.addEventListener("click", function(e) {
+        var item = e.target.closest ? e.target.closest(".hp-share-ball-item") : null;
+        if (!item) return;
+        var ck = item.querySelector(".hp-check");
+        if (item.classList.contains("selected")) {
+          item.classList.remove("selected");
+          if (ck) ck.innerHTML = "";
+        } else {
+          item.classList.add("selected");
+          if (ck) ck.innerHTML = checkSvg;
+        }
+      });
       /* 搜索功能 */
       var searchInput = document.getElementById("hp-share-search");
       if (searchInput) {
-        searchInput.oninput = function() {
+        searchInput.addEventListener("input", function() {
           var keyword = this.value.toLowerCase();
           var items = document.querySelectorAll(".hp-share-ball-item");
           for (var j = 0; j < items.length; j++) {
             var searchText = items[j].getAttribute("data-search-text") || "";
             items[j].style.display = searchText.indexOf(keyword) >= 0 ? "" : "none";
           }
-        };
+        });
       }
 
       panelEventBlock(sheet);
