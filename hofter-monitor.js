@@ -520,22 +520,31 @@
     document.addEventListener("mouseup", function() { onEnd(); });
 
     /* 触摸拖拽 */
+    var touchHandled = false;
     ball.addEventListener("touchstart", function(e) {
       var t = e.touches[0];
       onStart(t.clientX, t.clientY);
-      e.preventDefault();
-    }, { passive: false });
+      touchHandled = false;
+    }, { passive: true });
     document.addEventListener("touchmove", function(e) {
       if (!isDragging) return;
       var t = e.touches[0];
       onMove(t.clientX, t.clientY);
-      e.preventDefault();
-    }, { passive: false });
-    document.addEventListener("touchend", function() { onEnd(); });
+      if (dragMoved) touchHandled = true;
+    }, { passive: true });
+    document.addEventListener("touchend", function() {
+      if (isDragging && !dragMoved) {
+        /* 触摸没有移动 = 点击，直接切换面板 */
+        togglePanel();
+      }
+      onEnd();
+    });
 
-    /* 点击切换面板 */
+    /* 鼠标点击切换面板（仅桌面端） */
     ball.addEventListener("click", function() {
       if (dragMoved) { dragMoved = false; return; }
+      /* 如果是触摸设备，touchend 已经处理了，跳过 click */
+      if (touchHandled) { touchHandled = false; return; }
       togglePanel();
     });
     document.body.appendChild(ball);
