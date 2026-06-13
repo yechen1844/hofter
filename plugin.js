@@ -3638,115 +3638,215 @@
     return text;
   }
 
-  function navigateToChat(conversationId, convName) {
-    debugLog("navigateToChat: id=" + conversationId + " name=" + convName);
+  /* 辅助函数：轮询等待 DOM 元素出现 */
+  function waitForElement(selector, timeout) {
+    timeout = timeout || 5000;
+    return new Promise(function(resolve) {
+      var el = document.querySelector(selector);
+      if (el) { resolve(el); return; }
+      var start = Date.now();
+      var timer = setInterval(function() {
+        var el2 = document.querySelector(selector);
+        if (el2) { clearInterval(timer); resolve(el2); return; }
+        if (Date.now() - start > timeout) { clearInterval(timer); resolve(null); }
+      }, 200);
+    });
+  }
 
-    /* 方案0：尝试 Roche API 直接打开会话 */
-    if (state.roche) {
-      /* roche.conversation.open / navigate / show */
-      if (state.roche.conversation) {
-        if (state.roche.conversation.open) {
-          debugLog("Trying roche.conversation.open(" + conversationId + ")");
-          try {
-            var result = state.roche.conversation.open(conversationId);
-            debugLog("conversation.open returned: " + JSON.stringify(result).substring(0, 100));
-            if (result) return true;
-          } catch(e) { debugLog("conversation.open error: " + e.message); }
-        }
-        if (state.roche.conversation.navigate) {
-          debugLog("Trying roche.conversation.navigate(" + conversationId + ")");
-          try {
-            state.roche.conversation.navigate(conversationId);
-            return true;
-          } catch(e) { debugLog("conversation.navigate error: " + e.message); }
-        }
-        if (state.roche.conversation.show) {
-          debugLog("Trying roche.conversation.show(" + conversationId + ")");
-          try {
-            state.roche.conversation.show(conversationId);
-            return true;
-          } catch(e) { debugLog("conversation.show error: " + e.message); }
-        }
-      }
-      /* roche.ui.openConversation / navigateTo */
-      if (state.roche.ui) {
-        if (state.roche.ui.openConversation) {
-          debugLog("Trying roche.ui.openConversation(" + conversationId + ")");
-          try {
-            state.roche.ui.openConversation(conversationId);
-            return true;
-          } catch(e) { debugLog("openConversation error: " + e.message); }
-        }
-        if (state.roche.ui.navigateTo) {
-          debugLog("Trying roche.ui.navigateTo(/chat/" + conversationId + ")");
-          try {
-            state.roche.ui.navigateTo("/chat/" + conversationId);
-            return true;
-          } catch(e) { debugLog("navigateTo error: " + e.message); }
-        }
-      }
+  /* 辅助函数：点击底部导航的消息 tab */
+  function clickBottomNavInbox() {
+    debugLog("clickBottomNavInbox: looking for .bottom-nav");
+    var nav = document.querySelector('.bottom-nav');
+    if (!nav) {
+      debugLog("clickBottomNavInbox: .bottom-nav not found, trying nav");
+      nav = document.querySelector('nav.fixed.bottom-0');
     }
-
-    /* 方案1：DOM操作 — 基于 Roche 真实 CSS 钩子 */
-    /* Roche 会话列表使用 .conversation-item，内部有 .conv-name */
-    var convItems = document.querySelectorAll('.conversation-item');
-    debugLog("Found .conversation-item: " + convItems.length);
-    for (var ci = 0; ci < convItems.length; ci++) {
-      var convEl = convItems[ci];
-      var nameEl = convEl.querySelector('.conv-name');
-      var convText = nameEl ? nameEl.textContent.trim() : (convEl.textContent || "").substring(0, 30);
-      var convDataId = convEl.getAttribute('data-id') || convEl.getAttribute('data-conversation-id') || "";
-      debugLog("conv[" + ci + "] dataId=" + convDataId + " name=" + convText);
-      if (convDataId === conversationId || convText.indexOf(convName) >= 0) {
-        debugLog("Clicking .conversation-item idx=" + ci);
-        convEl.click();
+    if (!nav) { debugLog("clickBottomNavInbox: no bottom nav found"); return false; }
+    /* 底部导航通常有几个 tab 按钮，找到消息/Inbox 那个 */
+    var buttons = nav.querySelectorAll('button, [role="tab"], a');
+    debugLog("clickBottomNavInbox: found " + buttons.length + " nav buttons");
+    for (var i = 0; i < buttons.length; i++) {
+      var btn = buttons[i];
+      var text = (btn.textContent || "").trim().toLowerCase();
+      var ariaLabel = (btn.getAttribute('aria-label') || "").toLowerCase();
+      var title = (btn.getAttribute('title') || "").toLowerCase();
+      /* 匹配消息/Inbox/Chat 等关键词 */
+      if (text.indexOf("消息") >= 0 || text.indexOf("inbox") >= 0 || text.indexOf("chat") >= 0 ||
+          text.indexOf("message") >= 0 || ariaLabel.indexOf("inbox") >= 0 || ariaLabel.indexOf("chat") >= 0 ||
+          title.indexOf("inbox") >= 0 || title.indexOf("chat") >= 0) {
+        debugLog("clickBottomNavInbox: clicking button " + i + " text=" + text);
+        btn.click();
         return true;
       }
     }
+    /* 如果找不到明确的 Inbox 按钮，尝试点击第二个 tab（通常是消息） */
+    if (buttons.length >= 2) {
+      debugLog("clickBottomNavInbox: fallback clicking button[1]");
+      buttons[1].click();
+      return true;
+    }
+    debugLog("clickBottomNavInbox: no matching button found");
+    return false;
+  }
 
-    /* 通用兜底：尝试其他选择器 */
-    var selectors = [
-      '.conversation-item', '[class*="conversation-item"]',
-      '[data-conversation-id]', '[data-conv-id]', '[data-id]',
-      '[class*="chat-item"]', '[class*="contact-item"]',
-      'main.flex-1.overflow-y-auto > div.flex.items-center'
-    ];
-    for (var s = 0; s < selectors.length; s++) {
-      var items = document.querySelectorAll(selectors[s]);
-      if (items.length > 0) debugLog("Selector " + selectors[s] + " found " + items.length + " items");
-      for (var i = 0; i < items.length; i++) {
-        var item = items[i];
-        var itemId = item.getAttribute('data-id') || item.getAttribute('data-conversation-id') || item.getAttribute('data-conv-id') || item.getAttribute('data-session-id') || "";
-        var nameInItem = item.querySelector('.conv-name');
-        var itemText = nameInItem ? nameInItem.textContent.trim() : (item.textContent || "").substring(0, 30);
-        if (itemId === conversationId || (convName && itemText.indexOf(convName) >= 0)) {
-          debugLog("Clicking item: " + selectors[s] + " idx=" + i + " id=" + itemId + " text=" + itemText);
-          item.click();
-          return true;
+  function navigateToChat(conversationId, convName) {
+    debugLog("navigateToChat: id=" + conversationId + " name=" + convName);
+    /* 返回 Promise，支持异步等待 */
+    return new Promise(function(resolve) {
+      /* 方案0：尝试 Roche API 直接打开会话 */
+      if (state.roche && state.roche.conversation) {
+        var tried = false;
+        var apiNames = ['open', 'navigate', 'show'];
+        for (var ai = 0; ai < apiNames.length; ai++) {
+          if (state.roche.conversation[apiNames[ai]]) {
+            debugLog("Trying roche.conversation." + apiNames[ai] + "(" + conversationId + ")");
+            try {
+              var result = state.roche.conversation[apiNames[ai]](conversationId);
+              debugLog("conversation." + apiNames[ai] + " returned: " + JSON.stringify(result).substring(0, 100));
+              if (result) { resolve(true); return; }
+            } catch(e) { debugLog("conversation." + apiNames[ai] + " error: " + e.message); }
+            tried = true;
+          }
+        }
+        if (state.roche.ui) {
+          var uiMethods = ['openConversation', 'navigateTo'];
+          for (var ui = 0; ui < uiMethods.length; ui++) {
+            if (state.roche.ui[uiMethods[ui]]) {
+              debugLog("Trying roche.ui." + uiMethods[ui]);
+              try {
+                state.roche.ui[uiMethods[ui]](conversationId);
+                resolve(true); return;
+              } catch(e) { debugLog(uiMethods[ui] + " error: " + e.message); }
+            }
+          }
         }
       }
-    }
 
-    /* 方案2：尝试通过URL hash或路由跳转 */
-    if (conversationId) {
-      var routes = [
-        "/chat/" + conversationId,
-        "/conversation/" + conversationId,
-        "#/chat/" + conversationId,
-        "#/conversation/" + conversationId
-      ];
-      for (var r = 0; r < routes.length; r++) {
-        debugLog("Trying route: " + routes[r]);
+      /* 方案1：两阶段 DOM 导航 */
+      debugLog("navigateToChat: starting two-phase DOM navigation");
+      phase1_ensureInboxPage().then(function(inInbox) {
+        if (!inInbox) {
+          debugLog("navigateToChat: failed to reach inbox page");
+          resolve(false); return;
+        }
+        debugLog("navigateToChat: phase 1 done, now finding target conversation");
+        phase2_clickConversation(conversationId, convName).then(function(clicked) {
+          if (!clicked) {
+            debugLog("navigateToChat: failed to find/click target conversation");
+            resolve(false); return;
+          }
+          debugLog("navigateToChat: phase 2 done, waiting for chat page to load");
+          /* 等待聊天页面加载完成 */
+          waitForElement('.chat-input-textarea', 8000).then(function(inputEl) {
+            if (inputEl) {
+              debugLog("navigateToChat: chat page loaded successfully");
+              resolve(true);
+            } else {
+              debugLog("navigateToChat: chat page did not load (no .chat-input-textarea)");
+              resolve(false);
+            }
+          });
+        });
+      });
+    });
+  }
+
+  /* 阶段1：确保用户在消息列表页面 */
+  function phase1_ensureInboxPage() {
+    return new Promise(function(resolve) {
+      /* 先检查是否已在消息列表页（有 .conversation-item 或 .inbox-header） */
+      var inboxHeader = document.querySelector('.inbox-header');
+      var convItems = document.querySelectorAll('.conversation-item');
+      if (inboxHeader || convItems.length > 0) {
+        debugLog("phase1: already on inbox page");
+        resolve(true); return;
       }
-      /* 尝试hash路由跳转 */
-      try {
-        window.location.hash = "#/chat/" + conversationId;
-        debugLog("Set hash to #/chat/" + conversationId);
-      } catch(e) { debugLog("hash route error: " + e.message); }
-    }
+      /* 如果在聊天页面，先返回 */
+      var backBtn = document.querySelector('.chat-header-button--back');
+      if (backBtn) {
+        debugLog("phase1: on chat page, clicking back button");
+        backBtn.click();
+        /* 等待返回后检查是否到了 inbox */
+        setTimeout(function() {
+          var ih = document.querySelector('.inbox-header');
+          var ci = document.querySelectorAll('.conversation-item');
+          if (ih || ci.length > 0) {
+            debugLog("phase1: back button worked, now on inbox");
+            resolve(true); return;
+          }
+          /* 还没到 inbox，尝试点击底部导航 */
+          clickBottomNavAndCheck(resolve);
+        }, 800);
+        return;
+      }
+      /* 不在任何已知页面，尝试点击底部导航 */
+      clickBottomNavAndCheck(resolve);
+    });
+  }
 
-    debugLog("navigateToChat: FAILED - no method worked");
-    return false;
+  function clickBottomNavAndCheck(resolve) {
+    var clicked = clickBottomNavInbox();
+    if (!clicked) {
+      debugLog("phase1: cannot find bottom nav inbox button");
+      resolve(false); return;
+    }
+    /* 等待 inbox 页面加载 */
+    waitForElement('.conversation-item, .inbox-header', 5000).then(function(el) {
+      if (el) {
+        debugLog("phase1: inbox page loaded after clicking nav");
+        resolve(true);
+      } else {
+        debugLog("phase1: inbox page did not load after clicking nav");
+        resolve(false);
+      }
+    });
+  }
+
+  /* 阶段2：在会话列表中找到并点击目标会话 */
+  function phase2_clickConversation(conversationId, convName) {
+    return new Promise(function(resolve) {
+      /* 等待会话列表渲染 */
+      waitForElement('.conversation-item', 3000).then(function() {
+        var convItems = document.querySelectorAll('.conversation-item');
+        debugLog("phase2: found " + convItems.length + " .conversation-item elements");
+        for (var ci = 0; ci < convItems.length; ci++) {
+          var convEl = convItems[ci];
+          var nameEl = convEl.querySelector('.conv-name');
+          var convText = nameEl ? nameEl.textContent.trim() : "";
+          var convDataId = convEl.getAttribute('data-id') || convEl.getAttribute('data-conversation-id') || "";
+          debugLog("phase2: conv[" + ci + "] dataId=" + convDataId + " name=" + convText);
+          if (convDataId === conversationId || (convName && convText.indexOf(convName) >= 0)) {
+            debugLog("phase2: clicking .conversation-item idx=" + ci);
+            convEl.click();
+            resolve(true); return;
+          }
+        }
+        /* 兜底：尝试其他选择器 */
+        var fallbackSelectors = [
+          '[data-conversation-id="' + conversationId + '"]',
+          '[data-id="' + conversationId + '"]',
+          'main.flex-1.overflow-y-auto > div.flex.items-center'
+        ];
+        for (var s = 0; s < fallbackSelectors.length; s++) {
+          var items = document.querySelectorAll(fallbackSelectors[s]);
+          if (items.length > 0) {
+            debugLog("phase2: fallback selector " + fallbackSelectors[s] + " found " + items.length);
+            for (var i = 0; i < items.length; i++) {
+              var item = items[i];
+              var nameInItem = item.querySelector('.conv-name');
+              var itemText = nameInItem ? nameInItem.textContent.trim() : (item.textContent || "").substring(0, 30);
+              if (item.getAttribute('data-id') === conversationId || item.getAttribute('data-conversation-id') === conversationId || (convName && itemText.indexOf(convName) >= 0)) {
+                debugLog("phase2: clicking fallback item idx=" + i);
+                item.click();
+                resolve(true); return;
+              }
+            }
+          }
+        }
+        debugLog("phase2: target conversation not found in list");
+        resolve(false);
+      });
+    });
   }
 
   function findChatInput() {
@@ -3775,8 +3875,26 @@
   }
 
   function injectAndSend(text) {
+    /* 先尝试直接找输入框 */
     var input = findChatInput();
-    if (!input) return false;
+    if (input) {
+      return doInject(input, text);
+    }
+    /* 如果找不到，轮询等待输入框出现（最多10秒） */
+    debugLog("injectAndSend: input not found immediately, polling...");
+    return new Promise(function(resolve) {
+      waitForElement('.chat-input-textarea, textarea[class*="chat"]', 10000).then(function(el) {
+        if (!el) {
+          debugLog("injectAndSend: timed out waiting for chat input");
+          resolve(false); return;
+        }
+        debugLog("injectAndSend: found input after polling");
+        resolve(doInject(el, text));
+      });
+    });
+  }
+
+  function doInject(input, text) {
     input.focus();
     if (input.tagName === 'TEXTAREA' || input.tagName === 'INPUT') {
       var nativeSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value');
@@ -4982,26 +5100,43 @@
       /* 关闭分享面板 */
       var panel = document.getElementById("hp-share-panel");
       if (panel) panel.remove();
-      /* 关闭Hofter插件 */
-      if (state.roche && state.roche.ui) state.roche.ui.closeApp();
-      /* 延迟后跳转并注入发送 */
-      setTimeout(function() {
-        var navigated = navigateToChat(conversationId, convName);
-        if (!navigated) { showToast("\u8df3\u8f6c\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u6253\u5f00\u804a\u5929"); return; }
-        setTimeout(function() {
-          var sent = injectAndSend(cardText);
-          if (sent) {
-            sharedInfo.injectedAt = Date.now();
-            showToast("\u5206\u4eab\u6210\u529f\uff01");
-          } else {
-            showToast("\u81ea\u52a8\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u7c98\u8d34");
-            /* 降级：复制到剪贴板 */
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-              navigator.clipboard.writeText(cardText).catch(function(){});
-            }
+      /* 先导航，成功后再关闭插件 */
+      showToast("\u6b63\u5728\u8df3\u8f6c...");
+      navigateToChat(conversationId, convName).then(function(navigated) {
+        if (!navigated) {
+          showToast("\u8df3\u8f6c\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u6253\u5f00\u804a\u5929");
+          /* 降级：复制到剪贴板 */
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(cardText).then(function() {
+              showToast("\u5185\u5bb9\u5df2\u590d\u5236\u5230\u526a\u8d34\u677f");
+            }).catch(function(){});
           }
-        }, 800);
-      }, 500);
+          return;
+        }
+        /* 导航成功，关闭 Hofter 插件 */
+        if (state.roche && state.roche.ui) state.roche.ui.closeApp();
+        /* 延迟后注入发送 */
+        setTimeout(function() {
+          var result = injectAndSend(cardText);
+          /* injectAndSend 可能返回 Promise 或 boolean */
+          var handleResult = function(sent) {
+            if (sent) {
+              sharedInfo.injectedAt = Date.now();
+              showToast("\u5206\u4eab\u6210\u529f\uff01");
+            } else {
+              showToast("\u81ea\u52a8\u53d1\u9001\u5931\u8d25\uff0c\u8bf7\u624b\u52a8\u7c98\u8d34");
+              if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(cardText).catch(function(){});
+              }
+            }
+          };
+          if (result && typeof result.then === 'function') {
+            result.then(handleResult);
+          } else {
+            handleResult(result);
+          }
+        }, 1000);
+      });
     },
     continueReading: function() {
       var summary = state.currentReadingSummary;
