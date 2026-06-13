@@ -1069,10 +1069,21 @@
     }
     /* 未生成正文的摘要限制100条，超出则删除最旧的（末尾） */
     if (withoutContent.length > 100) {
-      withoutContent = withoutContent.slice(0, 100);
+      var removedIds = {};
+      var kept = withoutContent.slice(0, 100);
+      for (var ri = withoutContent.length - 1; ri >= 100; ri--) {
+        removedIds[withoutContent[ri].id] = true;
+      }
+      withoutContent = kept;
+      /* 从state.summaries中移除被删除的摘要（保留有正文的） */
+      var newSummaries = [];
+      for (var si = 0; si < state.summaries.length; si++) {
+        if (state.summaries[si].fullContent || !removedIds[state.summaries[si].id]) {
+          newSummaries.push(state.summaries[si]);
+        }
+      }
+      state.summaries = newSummaries;
     }
-    /* 有正文的摘要全部保留（供历史/订阅查看），但排在后面 */
-    state.summaries = withoutContent.concat(withContent);
     if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("summaries_cache"), state.summaries);
   }
   function savePublishedWorks(a) { state.publishedWorks = a; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("published_works"), a); }
@@ -2411,16 +2422,19 @@
   var PAGE_SIZE = 20;
   function loadMoreSummaries(grid) {
     if (!grid || state._homeAllLoaded) return;
-    /* 推荐页只加载未生成正文的摘要 */
+    /* 关注页显示所有摘要，但未生成正文的在前，已生成正文的在后 */
     var followSummaries = [];
+    var withContent = [];
     for (var fi = 0; fi < state.summaries.length; fi++) {
       if (!state.summaries[fi].fullContent) followSummaries.push(state.summaries[fi]);
+      else withContent.push(state.summaries[fi]);
     }
+    var displayList = followSummaries.concat(withContent);
     var start = state._homePageEnd || 0;
-    var end = Math.min(start + PAGE_SIZE, followSummaries.length);
-    for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(followSummaries[i]));
+    var end = Math.min(start + PAGE_SIZE, displayList.length);
+    for (var i = start; i < end; i++) grid.appendChild(createSummaryCard(displayList[i]));
     state._homePageEnd = end;
-    state._homeAllLoaded = end >= followSummaries.length;
+    state._homeAllLoaded = end >= displayList.length;
     var moreBtn = document.getElementById("hp-load-more");
     if (state._homeAllLoaded && moreBtn) moreBtn.remove();
   }
@@ -2429,17 +2443,20 @@
     tabs.innerHTML = '<div class="hp-tab ' + (state.homeTab==="follow"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'follow\')">\u5173\u6ce8</div><div class="hp-tab ' + (state.homeTab==="subscribe"?"active":"") + '" onclick="window.__hofter.switchHomeTab(\'subscribe\')">\u8ba2\u9605</div>';
     container.appendChild(tabs);
     if (state.homeTab === "follow") {
-      /* 推荐页只显示未生成正文的摘要 */
+      /* 关注页显示所有摘要：未生成正文在前，已生成正文在后 */
       var followSummaries = [];
+      var withContent = [];
       for (var fi = 0; fi < state.summaries.length; fi++) {
         if (!state.summaries[fi].fullContent) followSummaries.push(state.summaries[fi]);
+        else withContent.push(state.summaries[fi]);
       }
-      if (followSummaries.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
+      var displayList = followSummaries.concat(withContent);
+      if (displayList.length === 0) { container.innerHTML += '<div class="hp-empty">' + ICONS.refresh + '<p>\u4e0b\u62c9\u5237\u65b0\u83b7\u53d6\u540c\u4eba\u6587\u63a8\u8350</p></div>'; return; }
       var grid = document.createElement("div"); grid.className = "hp-card-grid";
-      var displayCount = Math.min(followSummaries.length, PAGE_SIZE);
+      var displayCount = Math.min(displayList.length, PAGE_SIZE);
       state._homePageEnd = displayCount;
-      state._homeAllLoaded = displayCount >= followSummaries.length;
-      for (var i = 0; i < displayCount; i++) grid.appendChild(createSummaryCard(followSummaries[i]));
+      state._homeAllLoaded = displayCount >= displayList.length;
+      for (var i = 0; i < displayCount; i++) grid.appendChild(createSummaryCard(displayList[i]));
       container.appendChild(grid);
       if (!state._homeAllLoaded) {
         var moreBtn = document.createElement("div");
@@ -2451,7 +2468,7 @@
       }
       var totalInfo = document.createElement("div");
       totalInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
-      totalInfo.textContent = "\u5171 " + followSummaries.length + " \u7bc7\u63a8\u8350";
+      totalInfo.textContent = "\u5171 " + displayList.length + " \u7bc7\u63a8\u8350";
       container.appendChild(totalInfo);
     } else {
       var readSummaries = [];
@@ -4439,18 +4456,19 @@
     /* 关闭按钮 */
     var closeBtn = document.createElement("div");
     closeBtn.id = "hp-share-ball-close";
-    closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;line-height:1";
+    closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:22px;height:22px;border-radius:50%;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;display:flex;align-items:center;justify-content:center;cursor:pointer;line-height:1";
     closeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
     closeBtn.onclick = function(e) {
       e.stopPropagation();
       e.preventDefault();
       _shareBallState._userDismissed = true;
       _shareBallState.visible = false;
+      var panel = document.getElementById("hp-share-panel-ball");
+      if (panel) { panel.remove(); _shareBallState.panelVisible = false; }
       if (ball.parentNode) ball.parentNode.removeChild(ball);
     };
     ball.appendChild(closeBtn);
-    ball.addEventListener("mouseenter", function() { closeBtn.style.display = "flex"; });
-    ball.addEventListener("mouseleave", function() { closeBtn.style.display = "none"; });
+    /* 关闭按钮始终显示，触摸设备友好 */
 
     /* 触摸/鼠标事件处理 */
     function onStart(cx, cy) {
@@ -4548,24 +4566,24 @@
       /* 浮动窗口：不覆盖全屏，毛玻璃背景 */
       var panel = document.createElement("div");
       panel.id = "hp-share-panel-ball";
-      /* 定位在悬浮球附近，自适应屏幕边界 */
+      /* 定位在悬浮球附近，自适应屏幕边界，确保不覆盖悬浮球 */
       var ballX = _shareBallState.position.x;
       var ballY = _shareBallState.position.y;
+      var ballW = 48, ballH = 48;
       var panelW = 320;
       var panelH = Math.min(420, window.innerHeight - 20);
       var px, py;
-      /* 水平方向：优先在球右侧，空间不够则左侧 */
-      if (ballX + 56 + panelW <= window.innerWidth) {
-        px = ballX + 56;
+      /* 水平方向：优先在球右侧，空间不够则左侧，都不够则居中 */
+      if (ballX + ballW + 8 + panelW <= window.innerWidth) {
+        px = ballX + ballW + 8;
       } else if (ballX - panelW - 8 >= 0) {
         px = ballX - panelW - 8;
       } else {
-        /* 两侧都不够，居中 */
         px = Math.max(5, (window.innerWidth - panelW) / 2);
       }
-      /* 垂直方向：优先在球上方对齐，超出则向上调整 */
-      py = ballY - 20;
-      if (py + panelH > window.innerHeight) py = window.innerHeight - panelH - 5;
+      /* 垂直方向：优先在球下方对齐，超出则向上调整 */
+      py = ballY + ballH + 8;
+      if (py + panelH > window.innerHeight) py = Math.max(5, ballY - panelH - 8);
       if (py < 5) py = 5;
 
       panel.style.cssText = "position:fixed;width:" + panelW + "px;max-height:" + panelH + "px;left:" + px + "px;top:" + py + "px;z-index:100000;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15)";
@@ -4601,6 +4619,7 @@
       /* 底部操作栏 */
       var memMode = state.settings.shareMemoryMode || "auto";
       html += '<div style="padding:10px 12px;display:flex;gap:8px;flex-shrink:0;background:rgba(255,255,255,0.95);border-top:1px solid #f0f0f0">';
+      html += '<button id="hp-share-delete-btn" style="flex:1;padding:10px;border-radius:10px;border:1px solid #e74c3c;background:transparent;color:#e74c3c;font-size:14px;font-weight:600;cursor:pointer">\u5220\u9664\u9009\u4e2d</button>';
       html += '<button id="hp-share-inject-btn" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#0ea5a0,#06b6d4);color:#fff;font-size:14px;font-weight:600;cursor:pointer">\u6ce8\u5165\u9009\u4e2d</button>';
       if (memMode === "manual") {
         html += '<button id="hp-share-memory-btn" style="flex:1;padding:10px;border-radius:10px;border:1px solid #0ea5a0;background:transparent;color:#0ea5a0;font-size:14px;font-weight:600;cursor:pointer">\u6ce8\u5165\u8bb0\u5fc6</button>';
@@ -4613,6 +4632,7 @@
       /* 事件绑定 */
       document.getElementById("hp-share-close-btn").addEventListener("click", function() { panel.remove(); _shareBallState.panelVisible = false; });
       document.getElementById("hp-share-inject-btn").addEventListener("click", function() { window.__hofter.batchInjectShares(); });
+      document.getElementById("hp-share-delete-btn").addEventListener("click", function() { window.__hofter.deleteSelectedShares(); });
       var memoryBtn = document.getElementById("hp-share-memory-btn");
       if (memoryBtn) memoryBtn.addEventListener("click", function() { window.__hofter.batchInjectShares(true); });
       document.getElementById("hp-share-select-all").addEventListener("click", function() {
@@ -4648,7 +4668,7 @@
 
       /* 点击面板外关闭 */
       function onOutsideClick(e) {
-        if (!panel.contains(e.target) && e.target.id !== "hp-share-ball") {
+        if (!panel.contains(e.target) && e.target.id !== "hp-share-ball" && !e.target.closest("#hp-share-ball")) {
           panel.remove();
           _shareBallState.panelVisible = false;
           document.removeEventListener("click", onOutsideClick, true);
@@ -5956,10 +5976,7 @@
         if (summary.isByUser) savePublishedWorks(state.publishedWorks); else saveSummariesCache(state.summaries);
         renderReaderContent(summary);
         showToast("\u8bc4\u8bba\u5df2\u5220\u9664");
-        /* 如果是角色评论，同步删除事实记忆 */
-        if (isCharComment && conversationId) {
-          deleteCharFactMemory(conversationId, commentName, summary.title || "");
-        }
+        /* 用户自行决定是否删除事实记忆，不再自动写入遗忘标记 */
       } else {
         /* 第一次点击：进入确认状态 */
         el.setAttribute("data-confirm", "true");
@@ -6312,6 +6329,61 @@
       showToast(memoryOnly ? "\u5f00\u59cb\u6ce8\u5165 " + ids.length + " \u6761\u8bb0\u5fc6..." : "\u5f00\u59cb\u6ce8\u5165 " + ids.length + " \u6761\u5206\u4eab...");
       injectNext();
     },
+    deleteSelectedShares: function() {
+      var selectedItems = document.querySelectorAll('.hp-share-ball-item.selected');
+      if (selectedItems.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u8981\u5220\u9664\u7684\u5206\u4eab"); return; }
+      var deleteBtn = document.getElementById("hp-share-delete-btn");
+      /* 防误触：第一次点击确认，第二次才删除 */
+      if (deleteBtn && deleteBtn.getAttribute("data-confirm") === "true") {
+        var ids = [];
+        for (var i = 0; i < selectedItems.length; i++) {
+          ids.push(selectedItems[i].getAttribute("data-share-id"));
+        }
+        getPendingShares().then(function(shares) {
+          var filtered = [];
+          for (var j = 0; j < shares.length; j++) {
+            var shouldRemove = false;
+            for (var k = 0; k < ids.length; k++) {
+              if (shares[j].id === ids[k]) { shouldRemove = true; break; }
+            }
+            if (!shouldRemove) filtered.push(shares[j]);
+          }
+          var jsonStr = JSON.stringify(filtered);
+          if (state.roche && state.roche.storage) {
+            state.roche.storage.set("_hofter_pending_shares", jsonStr);
+          }
+          try { localStorage.setItem("_hofter_pending_shares", jsonStr); } catch(e) {}
+          if (filtered.length === 0) {
+            hideShareBall();
+          } else {
+            updateShareBadge(filtered.length);
+          }
+          /* 重新渲染面板 */
+          var panel = document.getElementById("hp-share-panel-ball");
+          if (panel) { panel.remove(); _shareBallState.panelVisible = false; }
+          if (filtered.length > 0) renderSharePanel();
+          showToast("\u5df2\u5220\u9664 " + ids.length + " \u6761\u5206\u4eab");
+        });
+      } else {
+        /* 第一次点击：进入确认状态 */
+        if (deleteBtn) {
+          deleteBtn.setAttribute("data-confirm", "true");
+          deleteBtn.textContent = "\u786e\u8ba4\u5220\u9664\uff1f";
+          deleteBtn.style.background = "#e74c3c";
+          deleteBtn.style.color = "#fff";
+          deleteBtn.style.border = "none";
+          setTimeout(function() {
+            if (deleteBtn && deleteBtn.parentNode) {
+              deleteBtn.removeAttribute("data-confirm");
+              deleteBtn.textContent = "\u5220\u9664\u9009\u4e2d";
+              deleteBtn.style.background = "transparent";
+              deleteBtn.style.color = "#e74c3c";
+              deleteBtn.style.border = "1px solid #e74c3c";
+            }
+          }, 3000);
+        }
+      }
+    },
     setShareMemoryMode: function(mode) {
       var s = getSettings();
       s.shareMemoryMode = mode;
@@ -6344,7 +6416,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.8.0",
+    version: "2.8.1",
     apps: [
       {
         id: "hofter-home",
