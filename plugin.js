@@ -3639,18 +3639,19 @@
     var cpName = summary.cpTagName || "";
     var author = summary.author || "\u533f\u540d";
     var isByUser = summary.isByUser || false;
-    var text = "\ud83d\udcd6 " + userName + "\u5411\u60a8\u5206\u4eab\u4e86\u4e00\u7bc7Hofter\u540c\u4eba\u793e\u533a\u7684\u6587\u7ae0\n\n";
-    text += "\u3010\u6807\u9898\u3011" + (summary.title || "\u65e0\u6807\u9898") + "\n";
-    text += "\u3010\u4f5c\u8005\u3011" + author + (isByUser ? "\uff08\u7528\u6237\u521b\u4f5c\uff09" : "") + "\n";
-    if (cpName) text += "\u3010CP\u3011" + cpName + "\n";
+    var text = "[Hofter\u540c\u4eba\u793e\u533a\u5206\u4eab]\n";
+    text += userName + "\u5411\u60a8\u5206\u4eab\u4e86\u4e00\u7bc7\u540c\u4eba\u6587\u7ae0\n\n";
+    text += "\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\n";
+    text += "\u300a" + (summary.title || "\u65e0\u6807\u9898") + "\u300b\n";
+    text += "\u4f5c\u8005\uff1a" + author + (isByUser ? "\uff08\u7528\u6237\u521b\u4f5c\uff09" : "") + "\n";
+    if (cpName) text += "CP\uff1a" + cpName + "\n";
+    text += "\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\n\n";
     /* L1摘要始终包含 */
     var excerpt = summary.excerpt || summary.summary || "";
-    if (excerpt) text += "\n\u3010\u6458\u8981\u3011\n" + excerpt + "\n";
+    if (excerpt) text += "\u3010\u6458\u8981\u3011\n" + excerpt + "\n\n";
     if (sendSummary && summary.contentSummary) {
-      /* 用户选择"内容总结" */
-      text += "\n\u3010\u5185\u5bb9\u603b\u7ed3\u3011\n" + summary.contentSummary + "\n";
+      text += "\u3010\u5185\u5bb9\u603b\u7ed3\u3011\n" + summary.contentSummary + "\n";
     } else if (!sendSummary && summary.fullContent) {
-      /* 用户选择"正文" */
       var chapters = summary.fullContent.chapters || [];
       var fullText = "";
       for (var i = 0; i < chapters.length; i++) {
@@ -3663,7 +3664,7 @@
           }
         }
       }
-      if (fullText.trim()) text += "\n\u3010\u5b8c\u6574\u6b63\u6587\u3011\n" + fullText.trim() + "\n";
+      if (fullText.trim()) text += "\u3010\u5b8c\u6574\u6b63\u6587\u3011\n" + fullText.trim() + "\n";
     }
     /* 拼入用户评论 */
     if (summary.fullContent && summary.fullContent.comments) {
@@ -3677,9 +3678,10 @@
         }
       }
       if (userComments.length > 0) {
-        text += "\n\u2501\u2501\u2501 \u76f8\u5173\u8bc4\u8bba \u2501\u2501\u2501\n" + userComments.join("\n") + "\n";
+        text += "\n\u254c\u254c \u76f8\u5173\u8bc4\u8bba \u254c\u254c\n" + userComments.join("\n") + "\n";
       }
     }
+    text += "\n\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c\u254c";
     return text;
   }
 
@@ -4257,7 +4259,6 @@
 
     var ball = document.createElement("div");
     ball.id = "hp-share-ball";
-    /* 蓝绿色渐变，SVG图标，无emoji */
     ball.style.cssText = "position:fixed;width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#0ea5a0,#06b6d4);color:#fff;font-size:20px;display:flex;align-items:center;justify-content:center;z-index:99999;box-shadow:0 2px 12px rgba(14,165,160,0.4);cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none";
     ball.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>';
     ball.style.left = _shareBallState.position.x + "px";
@@ -4272,7 +4273,7 @@
       badge.textContent = shares.length > 99 ? "99+" : String(shares.length);
     });
 
-    /* 关闭按钮（长按或双击关闭） */
+    /* 关闭按钮 */
     var closeBtn = document.createElement("div");
     closeBtn.style.cssText = "position:absolute;top:-8px;left:-8px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,0.5);color:#fff;font-size:11px;display:none;align-items:center;justify-content:center;cursor:pointer;line-height:1";
     closeBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
@@ -4280,10 +4281,10 @@
       e.stopPropagation();
       e.preventDefault();
       _shareBallState._userDismissed = true;
-      hideShareBall();
+      _shareBallState.visible = false;
+      if (ball.parentNode) ball.parentNode.removeChild(ball);
     };
     ball.appendChild(closeBtn);
-    /* 鼠标悬停显示关闭按钮 */
     ball.addEventListener("mouseenter", function() { closeBtn.style.display = "flex"; });
     ball.addEventListener("mouseleave", function() { closeBtn.style.display = "none"; });
 
@@ -4353,19 +4354,7 @@
     document.body.appendChild(ball);
     _shareBallState.visible = true;
     _shareBallState._ball = ball;
-
-    /* MutationObserver 自动重建 */
-    if (!_shareBallState._observer) {
-      _shareBallState._observer = new MutationObserver(function() {
-        var b = document.getElementById("hp-share-ball");
-        if (!b || !b.parentNode) {
-          if (_shareBallState.visible) {
-            setTimeout(function() { renderShareBall(); }, 100);
-          }
-        }
-      });
-      _shareBallState._observer.observe(document.body, { childList: true });
-    }
+    /* 不再使用 MutationObserver 自动重建 */
   }
 
   function toggleSharePanel() {
@@ -4383,101 +4372,110 @@
   }
 
   function renderSharePanel() {
-    var conversationId = getCurrentConversationId();
-
     getPendingShares().then(function(shares) {
       if (shares.length === 0) {
         hideShareBall();
         return;
       }
-      /* 按时间倒序：最新的在最上面 */
       var sortedShares = shares.slice().sort(function(a, b) { return (b.sharedAt || 0) - (a.sharedAt || 0); });
 
-      var overlay = document.createElement("div");
-      overlay.id = "hp-share-panel-ball";
-      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99998;display:flex;align-items:flex-end;justify-content:center";
+      /* 浮动窗口：不覆盖全屏，毛玻璃背景 */
+      var panel = document.createElement("div");
+      panel.id = "hp-share-panel-ball";
+      /* 定位在悬浮球附近 */
+      var ballX = _shareBallState.position.x;
+      var ballY = _shareBallState.position.y;
+      var panelW = 320;
+      var panelH = 420;
+      var px = ballX + 56;
+      var py = ballY - 20;
+      if (px + panelW > window.innerWidth) px = ballX - panelW - 8;
+      if (py + panelH > window.innerHeight) py = window.innerHeight - panelH - 10;
+      if (py < 10) py = 10;
 
-      var sheet = document.createElement("div");
-      sheet.className = "hp-sheet";
-      var html = '<div class="hp-sheet-handle"></div>';
-      html += '<div style="padding:0 16px 4px;display:flex;justify-content:space-between;align-items:center"><div style="font-size:16px;font-weight:700">Hofter \u5206\u4eab</div><span style="font-size:12px;color:var(--text-hint)">' + sortedShares.length + ' \u5f85\u6ce8\u5165</span></div>';
+      panel.style.cssText = "position:fixed;width:" + panelW + "px;max-height:" + panelH + "px;left:" + px + "px;top:" + py + "px;z-index:100000;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.15)";
+
+      var html = '';
+      /* 头部：毛玻璃+实色文字 */
+      html += '<div style="padding:14px 16px 10px;background:rgba(14,165,160,0.85);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">';
+      html += '<div style="font-size:15px;font-weight:700;color:#fff">Hofter \u5206\u4eab</div>';
+      html += '<div style="display:flex;align-items:center;gap:8px"><span style="font-size:12px;color:rgba(255,255,255,0.8)">' + sortedShares.length + ' \u5f85\u6ce8\u5165</span><button id="hp-share-close-btn" style="width:24px;height:24px;border-radius:50%;border:none;background:rgba(255,255,255,0.2);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:14px;line-height:1"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
+      html += '</div>';
+
       /* 搜索框 */
-      html += '<div style="padding:4px 16px 8px"><input id="hp-share-search" type="text" placeholder="\u641c\u7d22\u6807\u9898\u6216CP..." style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid var(--bg-secondary);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;outline:none;box-sizing:border-box"></div>';
-      /* 全选/取消全选 */
-      html += '<div style="padding:0 16px 4px;display:flex;gap:8px;align-items:center"><button id="hp-share-select-all" class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px">\u5168\u9009</button><button id="hp-share-deselect-all" class="hp-btn hp-btn-sm hp-btn-outline" style="font-size:11px;padding:2px 8px">\u53d6\u6d88\u5168\u9009</button></div>';
-      html += '<div id="hp-share-ball-list" style="padding:4px 16px;max-height:40vh;overflow-y:auto">';
+      html += '<div style="padding:8px 12px;flex-shrink:0;background:rgba(255,255,255,0.95)"><input id="hp-share-search" type="text" placeholder="\u641c\u7d22\u6807\u9898\u6216CP..." style="width:100%;padding:7px 12px;border-radius:8px;border:1px solid #e0e0e0;background:#f5f5f5;color:#333;font-size:13px;outline:none;box-sizing:border-box"></div>';
+
+      /* 全选/取消 */
+      html += '<div style="padding:4px 12px;display:flex;gap:6px;flex-shrink:0;background:rgba(255,255,255,0.95)"><button id="hp-share-select-all" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid #0ea5a0;background:transparent;color:#0ea5a0;cursor:pointer">\u5168\u9009</button><button id="hp-share-deselect-all" style="font-size:11px;padding:3px 8px;border-radius:6px;border:1px solid #ccc;background:transparent;color:#666;cursor:pointer">\u53d6\u6d88\u5168\u9009</button></div>';
+
+      /* 列表 */
+      html += '<div id="hp-share-ball-list" style="flex:1;overflow-y:auto;padding:4px 8px;background:rgba(255,255,255,0.95)">';
 
       var checkSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
 
       for (var i = 0; i < sortedShares.length; i++) {
         var s = sortedShares[i];
-        html += '<div class="hp-share-ball-item" data-share-id="' + s.id + '" data-search-text="' + escapeHtml((s.title || "") + " " + (s.cpTagName || "")).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid var(--bg-secondary);cursor:pointer">';
-        html += '<div class="hp-check" style="width:20px;height:20px;border-radius:4px;border:2px solid var(--bg-secondary);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div>';
-        html += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:500">' + escapeHtml(s.title || "\u65e0\u6807\u9898") + '</div>';
-        html += '<div style="font-size:11px;color:var(--text-hint);margin-top:2px">' + (s.cpTagName ? escapeHtml(s.cpTagName) + " \u00b7 " : "") + (s.sendSummary ? "\u5185\u5bb9\u603b\u7ed3" : "\u6b63\u6587") + (s.convName ? " \u00b7 " + escapeHtml(s.convName) : "") + '</div></div>';
+        html += '<div class="hp-share-ball-item" data-share-id="' + s.id + '" data-search-text="' + escapeHtml((s.title || "") + " " + (s.cpTagName || "")).toLowerCase() + '" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border-bottom:1px solid #f0f0f0;cursor:pointer;border-radius:8px;transition:background 0.15s">';
+        html += '<div class="hp-check" style="width:20px;height:20px;border-radius:6px;border:2px solid #ccc;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.15s"></div>';
+        html += '<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + escapeHtml(s.title || "\u65e0\u6807\u9898") + '</div>';
+        html += '<div style="font-size:11px;color:#888;margin-top:2px">' + (s.cpTagName ? escapeHtml(s.cpTagName) + " \u00b7 " : "") + (s.sendSummary ? "\u5185\u5bb9\u603b\u7ed3" : "\u6b63\u6587") + (s.convName ? " \u00b7 " + escapeHtml(s.convName) : "") + '</div></div>';
         html += '</div>';
       }
-
       html += '</div>';
-      /* 底部操作栏 */
-      html += '<div style="padding:8px 16px;display:flex;gap:8px"><button id="hp-share-inject-btn" class="hp-btn hp-btn-primary" style="flex:1">\u6ce8\u5165\u9009\u4e2d</button><button id="hp-share-close-btn" class="hp-btn hp-btn-outline" style="flex:1">\u5173\u95ed</button></div>';
-      sheet.innerHTML = html;
-      overlay.appendChild(sheet);
-      document.body.appendChild(overlay);
 
-      /* 事件绑定（替代 inline onclick） */
-      /* 点击遮罩关闭 */
-      overlay.addEventListener("click", function(e) {
-        if (e.target === overlay) { overlay.remove(); _shareBallState.panelVisible = false; }
+      /* 底部操作栏 */
+      html += '<div style="padding:10px 12px;display:flex;gap:8px;flex-shrink:0;background:rgba(255,255,255,0.95);border-top:1px solid #f0f0f0"><button id="hp-share-inject-btn" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#0ea5a0,#06b6d4);color:#fff;font-size:14px;font-weight:600;cursor:pointer">\u6ce8\u5165\u9009\u4e2d</button></div>';
+
+      panel.innerHTML = html;
+      document.body.appendChild(panel);
+
+      /* 事件绑定 */
+      document.getElementById("hp-share-close-btn").addEventListener("click", function() { panel.remove(); _shareBallState.panelVisible = false; });
+      document.getElementById("hp-share-inject-btn").addEventListener("click", function() { window.__hofter.batchInjectShares(); });
+      document.getElementById("hp-share-select-all").addEventListener("click", function() {
+        var items = panel.querySelectorAll(".hp-share-ball-item");
+        for (var k = 0; k < items.length; k++) { items[k].classList.add("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) { ck.innerHTML = checkSvg; ck.style.background = "#0ea5a0"; ck.style.borderColor = "#0ea5a0"; } }
       });
-      /* 关闭按钮 */
-      var closeBtn = document.getElementById("hp-share-close-btn");
-      if (closeBtn) closeBtn.addEventListener("click", function() { overlay.remove(); _shareBallState.panelVisible = false; });
-      /* 注入按钮 */
-      var injectBtn = document.getElementById("hp-share-inject-btn");
-      if (injectBtn) injectBtn.addEventListener("click", function() { window.__hofter.batchInjectShares(); });
-      /* 全选 */
-      var selectAllBtn = document.getElementById("hp-share-select-all");
-      if (selectAllBtn) selectAllBtn.addEventListener("click", function() {
-        var items = document.querySelectorAll(".hp-share-ball-item");
-        for (var k = 0; k < items.length; k++) { items[k].classList.add("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) ck.innerHTML = checkSvg; }
+      document.getElementById("hp-share-deselect-all").addEventListener("click", function() {
+        var items = panel.querySelectorAll(".hp-share-ball-item");
+        for (var k = 0; k < items.length; k++) { items[k].classList.remove("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) { ck.innerHTML = ""; ck.style.background = ""; ck.style.borderColor = "#ccc"; } }
       });
-      /* 取消全选 */
-      var deselectAllBtn = document.getElementById("hp-share-deselect-all");
-      if (deselectAllBtn) deselectAllBtn.addEventListener("click", function() {
-        var items = document.querySelectorAll(".hp-share-ball-item");
-        for (var k = 0; k < items.length; k++) { items[k].classList.remove("selected"); var ck = items[k].querySelector(".hp-check"); if (ck) ck.innerHTML = ""; }
-      });
-      /* 列表项点击切换选中 */
-      var listEl = document.getElementById("hp-share-ball-list");
-      if (listEl) listEl.addEventListener("click", function(e) {
+      document.getElementById("hp-share-ball-list").addEventListener("click", function(e) {
         var item = e.target.closest ? e.target.closest(".hp-share-ball-item") : null;
         if (!item) return;
         var ck = item.querySelector(".hp-check");
         if (item.classList.contains("selected")) {
           item.classList.remove("selected");
-          if (ck) ck.innerHTML = "";
+          item.style.background = "";
+          if (ck) { ck.innerHTML = ""; ck.style.background = ""; ck.style.borderColor = "#ccc"; }
         } else {
           item.classList.add("selected");
-          if (ck) ck.innerHTML = checkSvg;
+          item.style.background = "rgba(14,165,160,0.08)";
+          if (ck) { ck.innerHTML = checkSvg; ck.style.background = "#0ea5a0"; ck.style.borderColor = "#0ea5a0"; }
         }
       });
-      /* 搜索功能 */
-      var searchInput = document.getElementById("hp-share-search");
-      if (searchInput) {
-        searchInput.addEventListener("input", function() {
-          var keyword = this.value.toLowerCase();
-          var items = document.querySelectorAll(".hp-share-ball-item");
-          for (var j = 0; j < items.length; j++) {
-            var searchText = items[j].getAttribute("data-search-text") || "";
-            items[j].style.display = searchText.indexOf(keyword) >= 0 ? "" : "none";
-          }
-        });
-      }
+      document.getElementById("hp-share-search").addEventListener("input", function() {
+        var keyword = this.value.toLowerCase();
+        var items = panel.querySelectorAll(".hp-share-ball-item");
+        for (var j = 0; j < items.length; j++) {
+          var searchText = items[j].getAttribute("data-search-text") || "";
+          items[j].style.display = searchText.indexOf(keyword) >= 0 ? "" : "none";
+        }
+      });
 
-      panelEventBlock(sheet);
+      /* 点击面板外关闭 */
+      function onOutsideClick(e) {
+        if (!panel.contains(e.target) && e.target.id !== "hp-share-ball") {
+          panel.remove();
+          _shareBallState.panelVisible = false;
+          document.removeEventListener("click", onOutsideClick, true);
+        }
+      }
+      setTimeout(function() { document.addEventListener("click", onOutsideClick, true); }, 50);
+
+      panelEventBlock(panel);
       _shareBallState.panelVisible = true;
-      _shareBallState._panel = overlay;
+      _shareBallState._panel = panel;
     });
   }
 
@@ -6054,7 +6052,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.2.0",
+    version: "2.3.0",
     apps: [
       {
         id: "hofter-home",
