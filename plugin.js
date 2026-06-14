@@ -1655,9 +1655,24 @@
       "- \u6807\u9898\uff1a" + summary.title, "- CP\uff1a" + (summary.cp || summary.cpTagName || ""),
       "- \u5708\u5b50\uff1a" + (summary.fandomTag || ""), "- \u8bbe\u5b9a/\u6897\uff1a" + (summary.tags ? summary.tags.join(", ") : (summary.tropeTags ? summary.tropeTags.join(", ") : "\u65e0")),
       "- \u6458\u8981\u53c2\u8003\uff1a" + (summary.summary || summary.excerpt || ""), "",
-      "\u2501\u2501 \u89d2\u8272\u4eba\u8bbe \u2501\u2501",
-      "\u5de6\u4f4d\uff08" + (left.name || "\u672a\u77e5") + "\uff09\uff1a", left.persona || left.bio || "\u65e0\u63cf\u8ff0", "",
-      "\u53f3\u4f4d\uff08" + (right.name || "\u672a\u77e5") + "\uff09\uff1a", right.persona || right.bio || "\u65e0\u63cf\u8ff0"].join("\n");
+      "\u2501\u2501 \u89d2\u8272\u4eba\u8bbe \u2501\u2501"];
+    /* 支持多CP：如果有_allCpTags，写入所有CP的人设 */
+    if (summary._allCpTags && summary._allCpTags.length > 0) {
+      for (var aci = 0; aci < summary._allCpTags.length; aci++) {
+        var acTag = summary._allCpTags[aci];
+        var acLeft = acTag.leftSide || acTag.attackSide || {};
+        var acRight = acTag.rightSide || acTag.defenseSide || {};
+        userMsg.push("CP #" + (aci + 1) + ": " + acTag.name);
+        userMsg.push("\u5de6\u4f4d\uff08" + (acLeft.name || "\u672a\u77e5") + "\uff09\uff1a" + (acLeft.persona || acLeft.bio || "\u65e0\u63cf\u8ff0"));
+        userMsg.push("\u53f3\u4f4d\uff08" + (acRight.name || "\u672a\u77e5") + "\uff09\uff1a" + (acRight.persona || acRight.bio || "\u65e0\u63cf\u8ff0"));
+        if (acTag.fandomTags && acTag.fandomTags.length > 0) userMsg.push("\u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a\uff1a" + acTag.fandomTags.join("\u3001"));
+        userMsg.push("");
+      }
+    } else {
+      userMsg.push("\u5de6\u4f4d\uff08" + (left.name || "\u672a\u77e5") + "\uff09\uff1a", left.persona || left.bio || "\u65e0\u63cf\u8ff0", "");
+      userMsg.push("\u53f3\u4f4d\uff08" + (right.name || "\u672a\u77e5") + "\uff09\uff1a", right.persona || right.bio || "\u65e0\u63cf\u8ff0");
+    }
+    userMsg = userMsg.join("\n");
     debugLog("L2 left isPersona:" + !!(left.persona) + " right isPersona:" + !!(right.persona));
     if (cpTag.fandomTags && cpTag.fandomTags.length > 0) {
       userMsg += "\n\n\u2501\u2501 \u5708\u5b50/\u4e16\u754c\u4e66\u8bbe\u5b9a \u2501\u2501\n" + cpTag.fandomTags.join("\u3001");
@@ -5261,13 +5276,44 @@
         for (var ti = 0; ti < trItems.length; ti++) { var trId = trItems[ti].getAttribute("data-trope-id"); if (trId) selectedTropes.push(trId); }
         var tropeNames = [];
         for (var tn = 0; tn < state.tropeTags.length; tn++) { if (selectedTropes.indexOf(state.tropeTags[tn].id) >= 0) tropeNames.push(state.tropeTags[tn].name); }
+        /* 收集所有选中的CP标签，去重相同人设 */
+        var selectedCpTags = [];
+        var seenCharIds = {};
+        for (var sci = 0; sci < selectedCps.length; sci++) {
+          var cpTag = null;
+          for (var scj = 0; scj < state.cpTags.length; scj++) { if (state.cpTags[scj].id === selectedCps[sci]) { cpTag = state.cpTags[scj]; break; } }
+          if (!cpTag) continue;
+          /* 通过角色id去重：如果左右位角色id组合已存在，跳过 */
+          var leftId = (cpTag.leftSide || cpTag.attackSide || {}).id || "";
+          var rightId = (cpTag.rightSide || cpTag.defenseSide || {}).id || "";
+          var charKey = [leftId, rightId].sort().join("_");
+          if (leftId && rightId && seenCharIds[charKey]) continue;
+          if (leftId && rightId) seenCharIds[charKey] = true;
+          selectedCpTags.push(cpTag);
+        }
+        if (selectedCpTags.length === 0) { showToast("\u672a\u627e\u5230\u6709\u6548CP"); return; }
         showLoading();
-        var lockTag = null;
-        for (var j = 0; j < state.cpTags.length; j++) { if (state.cpTags[j].id === selectedCps[0]) { lockTag = state.cpTags[j]; break; } }
-        generateLayer2Full({title:promptText||"\u7075\u611f\u521b\u4f5c", cpTagId:selectedCps[0], cpTagName:lockTag?lockTag.name:"", excerpt:promptText, tropeTags:tropeNames, fandomTag:""}, function(result) {
+        /* 构建CP名称列表和cpTagId列表 */
+        var cpNames = [];
+        var cpTagIds = [];
+        for (var cni = 0; cni < selectedCpTags.length; cni++) {
+          cpNames.push(selectedCpTags[cni].name);
+          cpTagIds.push(selectedCpTags[cni].id);
+        }
+        var primaryCp = selectedCpTags[0];
+        var inspireSummary = {title:promptText||"\u7075\u611f\u521b\u4f5c", cpTagId:primaryCp.id, cpTagName:primaryCp.name, cp:cpNames.join("\u3001"), excerpt:promptText, tropeTags:tropeNames, fandomTag:"", _allCpTags:selectedCpTags};
+        generateLayer2Full(inspireSummary, function(result) {
           hideLoading();
           if (result) {
-            var work = {id:generateId(), title:promptText||"\u7075\u611f\u521b\u4f5c", author:state.activePersona?(state.activePersona.handle||state.activePersona.name):"\u6211", cpTagId:selectedCps[0], cpTagName:lockTag?lockTag.name:"", excerpt:promptText, fullContent:result, isByUser:true, coverGradient:randomGradient(), timeAgo:"\u521a\u521a"};
+            /* fullContent兼容处理 */
+            if (result.chapter && !result.chapters) { result.chapters = [result.chapter]; }
+            if (!result.comments) result.comments = [];
+            var work = {id:generateId(), title:promptText||"\u7075\u611f\u521b\u4f5c", author:state.activePersona?(state.activePersona.handle||state.activePersona.name):"\u6211", cpTagId:primaryCp.id, cpTagName:primaryCp.name, cp:cpNames.join("\u3001"), excerpt:promptText, fullContent:result, isByUser:true, coverGradient:randomGradient(), timeAgo:"\u521a\u521a"};
+            /* 复制contentSummary和_debugContext到work */
+            if (result.content_summary) work.contentSummary = result.content_summary;
+            else if (result.continuation_summary) work.contentSummary = result.continuation_summary;
+            if (result.author_notes) work.authorNotes = result.author_notes;
+            if (inspireSummary._debugContext) work._debugContext = inspireSummary._debugContext;
             state.publishedWorks.push(work); savePublishedWorks(state.publishedWorks);
             closeSheet("create-page"); showToast("\u521b\u4f5c\u5b8c\u6210\uff01"); renderApp();
             /* 自动生成评论 */
@@ -6069,7 +6115,15 @@
       var rightSide = rightChar ? {id:rightChar.id, name:rightChar.name||rightChar.handle, persona:rightChar.persona||rightChar.bio||"", avatar:rightChar.avatar||""} : (rightPersona ? {id:rightPersona.id, name:rightPersona.name||rightPersona.handle, persona:rightPersona.persona||rightPersona.bio||"", avatar:rightPersona.avatar||""} : null);
       if (!leftSide || !rightSide) { showToast("\u9009\u62e9\u65e0\u6548"); return; }
       var tagName = leftSide.name + " \u00d7 " + rightSide.name;
-      for (var i = 0; i < state.cpTags.length; i++) { if (state.cpTags[i].name === tagName) { showToast("CP\u6807\u7b7e\u5df2\u5b58\u5728"); return; } }
+      /* 通过角色id校验是否已存在相同人设的CP标签 */
+      var charKey = [leftSide.id, rightSide.id].sort().join("_");
+      for (var i = 0; i < state.cpTags.length; i++) {
+        var existLeft = state.cpTags[i].leftSide || state.cpTags[i].attackSide || {};
+        var existRight = state.cpTags[i].rightSide || state.cpTags[i].defenseSide || {};
+        var existKey = [existLeft.id || "", existRight.id || ""].sort().join("_");
+        if (existKey === charKey) { showToast("\u5df2\u5b58\u5728\u76f8\u540c\u89d2\u8272\u7684CP\u6807\u7b7e"); return; }
+        if (state.cpTags[i].name === tagName) { showToast("CP\u6807\u7b7e\u5df2\u5b58\u5728"); return; }
+      }
       state.cpTags.push({id:generateId(), name:tagName, leftSide:leftSide, rightSide:rightSide, fandomTags:[], createdBy:"user"});
       saveCpTags(state.cpTags); showToast("CP\u6807\u7b7e\u5df2\u521b\u5efa"); showTagManager();
     },
@@ -6436,7 +6490,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.8.3",
+    version: "2.9.0",
     apps: [
       {
         id: "hofter-home",
