@@ -4146,12 +4146,16 @@
   }
 
   /* 写入事实记忆：追加到最新一条事实记忆 */
-  function writeCharFactMemory(conversationId, charName, title, commentText, isGroup) {
+  function writeCharFactMemory(conversationId, charName, title, commentText, isGroup, contentSummary) {
     if (!state.roche || !state.roche.memory) return;
     var where = isGroup ? "Hofter\u7fa4\u804a" : "Hofter";
     var now = new Date();
     var timeStr = now.getHours() + ":" + (now.getMinutes() < 10 ? "0" : "") + now.getMinutes();
-    var factText = charName + "\u5728" + where + "\u540c\u4eba\u793e\u533a\u8bc4\u8bba\u4e86\u300a" + title + "\u300b\uff1a" + (commentText || "").substring(0, 100);
+    var factText = charName + "\u5728" + where + "\u540c\u4eba\u793a\u533a\u8bc4\u8bba\u4e86\u540c\u4eba\u6587\u300a" + title + "\u300b";
+    if (contentSummary && contentSummary.length > 5) {
+      factText += "\uff08\u6458\u8981\uff1a" + contentSummary.substring(0, 80) + "\uff09";
+    }
+    factText += "\u3002" + charName + "\u7684\u8bc4\u8bba\uff1a" + (commentText || "").substring(0, 150);
     /* 直接新建一条事实记忆，确保可靠写入 */
     state.roche.memory.write({
       conversationId: conversationId,
@@ -4389,7 +4393,7 @@
             renderReaderContent(summary);
             /* 将char评论追加到事实记忆 */
             for (var mi = 0; mi < comments.length; mi++) {
-              writeCharFactMemory(conversationId, charName, title, comments[mi].text || "", false);
+              writeCharFactMemory(conversationId, charName, title, comments[mi].text || "", false, summary.contentSummary || summary.summary || "");
             }
             /* 记忆注入由分享悬浮球负责（按 shareMemoryMode 设置） */
             if (callback) callback();
@@ -4543,7 +4547,7 @@
               /* 将群聊char评论追加到事实记忆 */
               for (var gi = 0; gi < comments.length; gi++) {
                 var gName = comments[gi].name || "\u89d2\u8272";
-                writeCharFactMemory(conversationId, gName, title, comments[gi].text || "", true);
+                writeCharFactMemory(conversationId, gName, title, comments[gi].text || "", true, summary.contentSummary || summary.summary || "");
               }
               /* 群聊记忆注入由分享悬浮球负责 */
               if (callback) callback();
@@ -5426,7 +5430,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.17.2",
+          version: "2.17.3",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5441,7 +5445,7 @@
         };
       } else {
         data = {
-          version: "2.17.2",
+          version: "2.17.3",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -7158,7 +7162,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.17.2",
+    version: "2.17.3",
     apps: [
       {
         id: "hofter-home",
