@@ -1875,20 +1875,46 @@
     } catch(e) { debugLog("L2 FATAL:" + e.message + " stack:" + (e.stack || "").substring(0, 300)); callback(null); }
   }
 
-  function generateLayer3Comments(fullText, callback, existingComments) {
+  function generateLayer3Comments(fullText, callback, existingComments, mode, summary) {
     try {
-    debugLog("L3 start, fullText len:" + fullText.length + " existingComments:" + (existingComments ? existingComments.length : 0));
+    /* mode: "auto" | "manual" | "userComment" — 不同模式注入不同额外提示词 */
+    if (!mode) mode = "auto";
+    debugLog("L3 start, fullText len:" + fullText.length + " existingComments:" + (existingComments ? existingComments.length : 0) + " mode:" + mode + " isByUser:" + (summary && summary.isByUser));
     var chatFn = getActiveModelPreset() ? customAiChat : aiChatStream;
     var promptSrc = (state.settings.promptLanguage === "en" && PROMPTS.layer3CommentsEN) ? PROMPTS.layer3CommentsEN : PROMPTS.layer3Comments;
-    var userMsg = "\u4ee5\u4e0b\u662f\u540c\u4eba\u6587\u5185\u5bb9\uff0c\u8bf7\u751f\u6210\u8bc4\u8bba\uff1a\n\n" + fullText.substring(0, 2500);
-    /* 如果有已有评论（包括用户评论），传给L3让NPC可以回复 */
+    /* 正文内容构建：优先使用内容总结 + 正文片段，避免纯截断丢失信息 */
+    var userMsg = "以下是同人文内容，请生成评论：\n\n";
+    if (summary && summary.contentSummary && summary.contentSummary.length > 20) {
+      userMsg += "【内容总结】" + summary.contentSummary + "\n\n【正文片段】" + fullText.substring(0, 1500);
+    } else {
+      userMsg += fullText.substring(0, 2500);
+    }
+    /* 根据模式注入不同的额外提示词 */
+    if (mode === "userComment") {
+      /* 用户发评论后刷新：强调与用户评论互动 */
+      userMsg += "\n\n【重要：用户互动模式】刚刚有真实读者发表了评论！你生成的新评论中，至少有 2 条必须回复该读者的评论——可以表达共鸣、补充观点、提出疑问或给予鼓励。其余评论可以独立发表或与其他已有评论互动。让读者感受到被关注和回应。";
+    } else if (mode === "manual") {
+      /* 手动刷新：可以回复已有评论，也可以独立发表 */
+      userMsg += "\n\n【提示】你可以回复已有评论，也可以独立发表新观点，灵活组合。";
+    }
+    /* auto模式不额外注入，保持基础提示 */
+    /* 如果有已有评论，传给L3让NPC可以回复 */
     if (existingComments && existingComments.length > 0) {
-      userMsg += "\n\n\u3010\u5df2\u6709\u8bc4\u8bba\u3011\u4ee5\u4e0b\u662f\u8bfb\u8005\u4eec\u5df2\u7ecf\u53d1\u8868\u7684\u8bc4\u8bba\uff0c\u4f60\u751f\u6210\u7684\u65b0\u8bc4\u8bba\u5fc5\u987b\u4e0e\u5176\u4e2d\u81f3\u5c11 2-3 \u6761\u4ea7\u751f\u4e92\u52a8\uff08\u56de\u590d\u3001\u5171\u9e23\u3001\u8865\u5145\u89c2\u70b9\u7b49\uff09\uff1a\n";
+      userMsg += "\n\n【已有评论】以下是读者们已经发表的评论：\n";
       for (var i = 0; i < existingComments.length; i++) {
         var ec = existingComments[i];
-        userMsg += "- " + (ec.name || "\u533f\u540d") + "\uff1a" + (ec.text || "") + (ec.replyTo ? " \uff08\u56de\u590d " + ec.replyTo + "\uff09" : "") + "\n";
+        var isUser = ec.isUserComment || (summary && summary.isByUser && ec.name === (summary.author || ""));
+        userMsg += "- " + (ec.name || "匿名") + "：" + (ec.text || "") + (ec.replyTo ? " （回复 " + ec.replyTo + "）" : "") + (isUser ? " 【真实读者】" : "") + "\n";
       }
-      userMsg += "\n\u91cd\u8981\uff1a\u65b0\u8bc4\u8bba\u4e2d\u81f3\u5c11\u6709 2-3 \u6761\u4f7f\u7528 replyTo \u5b57\u6bb5\u56de\u590d\u4e0a\u8ff0\u5df2\u6709\u8bc4\u8bba\uff0c\u5176\u4f59\u53ef\u4ee5\u72ec\u7acb\u53d1\u8868\u3002";
+      if (mode === "userComment") {
+        userMsg += "\n重要：新评论中至少有 2 条使用 replyTo 字段回复【真实读者】的评论，其余可以独立发表或回复其他评论。";
+      } else {
+        userMsg += "\n提示：新评论可以使用 replyTo 字段回复上述已有评论，也可以独立发表。";
+      }
+    }
+    /* 如果文章是用户创作的，加强与作者的互动 */
+    if (summary && summary.isByUser) {
+      userMsg += "\n\n【特别提示：这是读者亲手创作的作品】这篇同人文是真实读者用心创作的。你生成的评论中，至少 1-2 条要真诚地感谢、鼓励或赞美作者的创作——可以是感动、期待续作、夸赞文笔等。让作者感受到被认可和支持。";
     }
     chatFn([
       { role: "system", content: promptSrc },
@@ -3611,7 +3637,7 @@
                 }
                 saveSummariesCache(state.summaries);
                 renderReaderContent(summary);
-              });
+              }, null, "auto", summary);
             }
           }
         } else {
@@ -5386,7 +5412,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.16.0",
+          version: "2.17.0",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5401,7 +5427,7 @@
         };
       } else {
         data = {
-          version: "2.16.0",
+          version: "2.17.0",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -5791,7 +5817,7 @@
               savePublishedWorks(state.publishedWorks);
               if (state.currentReadingSummary && state.currentReadingSummary.id === work.id) renderReaderContent(work);
             }
-          });
+          }, null, "auto", work);
         }
         return;
       }
@@ -5870,7 +5896,7 @@
                     savePublishedWorks(state.publishedWorks);
                     if (state.currentReadingSummary && state.currentReadingSummary.id === work.id) renderReaderContent(work);
                   }
-                });
+                }, null, "auto", work);
               }
             }
           } else { showToast("\u521b\u4f5c\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5"); }
@@ -5902,7 +5928,7 @@
               savePublishedWorks(state.publishedWorks);
               if (state.currentReadingSummary && state.currentReadingSummary.id === work.id) renderReaderContent(work);
             }
-          });
+          }, null, "auto", work);
         }
       }
     },
@@ -6542,7 +6568,7 @@
           if (summary.isByUser) savePublishedWorks(state.publishedWorks); else saveSummariesCache(state.summaries);
           renderReaderContent(summary);
         });
-      }, existingComments);
+      }, existingComments, "manual", summary);
     },
     replyToComment: function(name) {
       var indicator = document.getElementById("hp-reply-indicator");
@@ -6568,7 +6594,7 @@
       if (!summary || !summary.fullContent) { showToast("\u65e0\u6cd5\u53d1\u8bc4\u8bba"); return; }
       var userName = state.activePersona ? (state.activePersona.handle || state.activePersona.name || "\u6211") : "\u6211";
       var replyTo = state._replyToName || "";
-      var userComment = { name: userName, text: input.value.trim(), time: "\u521a\u521a", likes: 0, replyTo: replyTo };
+      var userComment = { name: userName, text: input.value.trim(), time: "\u521a\u521a", likes: 0, replyTo: replyTo, isUserComment: true };
       if (!summary.fullContent.comments) summary.fullContent.comments = [];
       summary.fullContent.comments.push(userComment);
       input.value = "";
@@ -6596,7 +6622,7 @@
         }
         if (summary.isByUser) savePublishedWorks(state.publishedWorks); else saveSummariesCache(state.summaries);
         renderReaderContent(summary);
-      }, summary.fullContent.comments);
+      }, summary.fullContent.comments, "userComment", summary);
     },
     reportComment: function(el) { if (el) el.textContent = "\u5df2\u4e3e\u62a5"; el.style.color = "var(--text-hint)"; showToast("\u5df2\u4e3e\u62a5\uff0c\u611f\u8c22\u53cd\u9988"); },
     deleteComment: function(el, cid) {
@@ -6834,7 +6860,7 @@
                   saveSummariesCache(state.summaries);
                   idx++;
                   generateNext();
-                });
+                }, null, "auto", summary);
                 return;
               }
             }
@@ -7118,7 +7144,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.16.0",
+    version: "2.17.0",
     apps: [
       {
         id: "hofter-home",
