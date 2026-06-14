@@ -3620,6 +3620,34 @@
       var ch = chapters[chIdx];
       if (ch.title) html += '<div class="hp-reader-chapter-title">' + escapeHtml(ch.title) + '</div>';
       var contents = ch.content || [];
+      /* 预处理annotations：优先用quotes文本匹配段落，匹配不到再用paragraphIndex */
+      var annotations = fc.annotations || [];
+      var annMap = {}; /* paraIdx -> annotation */
+      for (var ai = 0; ai < annotations.length; ai++) {
+        var ann = annotations[ai];
+        var matched = false;
+        /* 优先用quotes文本匹配 */
+        if (ann.quotes) {
+          var qText = ann.quotes.replace(/[\s\u3000\u00a0]/g, "").substring(0, 30);
+          for (var ci = 0; ci < chapters.length; ci++) {
+            var cContents = chapters[ci].content || [];
+            for (var pi = 0; pi < cContents.length; pi++) {
+              var pText = (cContents[pi].text || "").replace(/[\s\u3000\u00a0]/g, "");
+              if (pText.indexOf(qText) >= 0) {
+                ann._matchedParaIdx = ci * 1000 + pi;
+                annMap[ann._matchedParaIdx] = ann;
+                matched = true;
+                break;
+              }
+            }
+            if (matched) break;
+          }
+        }
+        /* 回退到paragraphIndex */
+        if (!matched && typeof ann.paragraphIndex === "number") {
+          annMap[ann.paragraphIndex] = ann;
+        }
+      }
       var baseParaIdx = 0;
       for (var pc = 0; pc < chIdx; pc++) baseParaIdx += (chapters[pc].content || []).length;
       for (var p = 0; p < contents.length; p++) {
@@ -3627,8 +3655,10 @@
         var paraIdx = baseParaIdx + p;
         var hasAnnotation = false;
         var annotationForPara = null;
-        var annotations = fc.annotations || [];
-        for (var a = 0; a < annotations.length; a++) { if (annotations[a].paragraphIndex === paraIdx) { hasAnnotation = true; annotationForPara = annotations[a]; break; } }
+        /* 先查文本匹配的key，再查paragraphIndex */
+        var matchKey = chIdx * 1000 + p;
+        if (annMap[matchKey]) { hasAnnotation = true; annotationForPara = annMap[matchKey]; }
+        else if (annMap[paraIdx]) { hasAnnotation = true; annotationForPara = annMap[paraIdx]; }
         var pStyle = "font-size:" + state.fontSize + "px";
         /* 根据段落类型决定样式 */
         if (para.type === "dialogue") {
@@ -3639,7 +3669,8 @@
         }
         html += renderRichText(para.text || "");
         if (hasAnnotation) {
-          html += ' <span style="display:inline-flex;align-items:center;cursor:pointer;color:var(--primary);margin-left:4px" onclick="window.__hofter.showAnnotationPanel(' + paraIdx + ')">' + ICONS.comment.replace(/24/g,"14") + '<span style="font-size:10px;margin-left:2px">' + (annotationForPara.notes ? annotationForPara.notes.length : 0) + '</span></span>';
+          var annKey = annMap[matchKey] ? matchKey : paraIdx;
+          html += ' <span style="display:inline-flex;align-items:center;cursor:pointer;color:var(--primary);margin-left:4px" onclick="window.__hofter.showAnnotationPanel(' + annKey + ')">' + ICONS.comment.replace(/24/g,"14") + '<span style="font-size:10px;margin-left:2px">' + (annotationForPara.notes ? annotationForPara.notes.length : 0) + '</span></span>';
         }
         html += '</div>';
       }
@@ -3747,7 +3778,9 @@
     if (!currentSummary || !currentSummary.fullContent) return;
     var annotations = currentSummary.fullContent.annotations || [];
     var annotation = null;
-    for (var j = 0; j < annotations.length; j++) { if (annotations[j].paragraphIndex === paraIdx) { annotation = annotations[j]; break; } }
+    /* 先按_matchedParaIdx查找，再按paragraphIndex查找 */
+    for (var j = 0; j < annotations.length; j++) { if (annotations[j]._matchedParaIdx === paraIdx) { annotation = annotations[j]; break; } }
+    if (!annotation) { for (var j2 = 0; j2 < annotations.length; j2++) { if (annotations[j2].paragraphIndex === paraIdx) { annotation = annotations[j2]; break; } } }
     if (!annotation) return;
     var existing = document.getElementById("annotation-panel");
     if (existing) { existing.remove(); return; }
@@ -5270,7 +5303,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.13.4",
+          version: "2.13.5",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5285,7 +5318,7 @@
         };
       } else {
         data = {
-          version: "2.13.4",
+          version: "2.13.5",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -6989,7 +7022,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.13.4",
+    version: "2.13.5",
     apps: [
       {
         id: "hofter-home",
