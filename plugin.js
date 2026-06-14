@@ -2067,7 +2067,7 @@
     '.' + ROOT_CLASS + ' .hp-nav-publish:hover{transform:scale(1.1)}' +
     '.' + ROOT_CLASS + ' .hp-nav-publish svg{width:24px;height:24px}' +
     '.' + ROOT_CLASS + ' .hp-sheet-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:300;display:flex;align-items:flex-end;animation:hpFadeIn .2s}' +
-    '.' + ROOT_CLASS + ' .hp-sheet{background:var(--bg-card);border-radius:var(--radius-xl) var(--radius-xl) 0 0;width:100%;max-height:70vh;padding:20px 16px;padding-bottom:max(20px,env(safe-area-inset-bottom));animation:hpSlideUp .3s}' +
+    '.' + ROOT_CLASS + ' .hp-sheet{background:var(--bg-card);border-radius:var(--radius-xl) var(--radius-xl) 0 0;width:100%;max-height:70vh;padding:20px 16px;padding-bottom:max(20px,env(safe-area-inset-bottom));animation:hpSlideUp .3s;overflow-y:auto;-webkit-overflow-scrolling:touch}' +
     '.' + ROOT_CLASS + ' .hp-sheet-handle{width:36px;height:4px;background:var(--text-hint);border-radius:2px;margin:0 auto 16px}' +
     '.' + ROOT_CLASS + ' .hp-sheet-item{display:flex;align-items:center;gap:14px;padding:14px 8px;cursor:pointer;border-radius:var(--radius-sm);transition:background .2s}' +
     '.' + ROOT_CLASS + ' .hp-sheet-item:hover{background:var(--bg-secondary)}' +
@@ -5312,7 +5312,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.13.0",
+          version: "2.13.1",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5327,7 +5327,7 @@
         };
       } else {
         data = {
-          version: "2.13.0",
+          version: "2.13.1",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -7031,7 +7031,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.13.0",
+    version: "2.13.1",
     apps: [
       {
         id: "hofter-home",
