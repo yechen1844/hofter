@@ -46,6 +46,7 @@
     switchIcon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
     addCircle: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
     moreHorizontal: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg>',
+    folder: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>',
     share: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>'
   };
 
@@ -2165,6 +2166,7 @@
     '.' + ROOT_CLASS + ' .hp-menu-item:hover{background:var(--bg-secondary)}' +
     '.' + ROOT_CLASS + ' .hp-menu-item svg{width:20px;height:20px;color:var(--text-secondary)}' +
     '.' + ROOT_CLASS + ' .hp-menu-item span{flex:1;font-size:14px}' +
+    '.' + ROOT_CLASS + ' .hp-menu-item.selected .hp-col-check{background:var(--primary);border-color:var(--primary)}' +
     '.' + ROOT_CLASS + ' .hp-message-overlay{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--bg-primary);z-index:260;display:flex;flex-direction:column}' +
     '.' + ROOT_CLASS + ' .hp-msg-tabs{display:flex;border-bottom:1px solid var(--bg-secondary);background:var(--bg-card)}' +
     '.' + ROOT_CLASS + ' .hp-msg-tab{flex:1;text-align:center;padding:12px 0;font-size:14px;color:var(--text-secondary);cursor:pointer;position:relative}' +
@@ -2520,9 +2522,21 @@
       if (readSummaries.length === 0) {
         container.innerHTML += '<div class="hp-empty"><p>\u8fd8\u6ca1\u6709\u9605\u8bfb\u8fc7\u7684\u4f5c\u54c1</p><p style="font-size:12px;color:var(--text-hint)">\u70b9\u51fb\u6458\u8981\u5361\u7247\u751f\u6210\u5e76\u9605\u8bfb\u6b63\u6587\u540e\uff0c\u4f1a\u81ea\u52a8\u4fdd\u5b58\u5728\u8fd9\u91cc</p></div>';
       } else {
+        if (!state._subPageEnd) state._subPageEnd = 10;
         var readGrid = document.createElement("div"); readGrid.className = "hp-card-grid";
-        for (var rj = 0; rj < readSummaries.length; rj++) readGrid.appendChild(createSummaryCard(readSummaries[rj]));
+        var showCount = Math.min(state._subPageEnd, readSummaries.length);
+        for (var rj = 0; rj < showCount; rj++) readGrid.appendChild(createSummaryCard(readSummaries[rj]));
         container.appendChild(readGrid);
+        if (state._subPageEnd < readSummaries.length) {
+          var loadMoreBtn = document.createElement("div");
+          loadMoreBtn.style.cssText = "text-align:center;padding:16px;color:var(--primary);font-size:13px;cursor:pointer;font-weight:600";
+          loadMoreBtn.textContent = "\u52a0\u8f7d\u66f4\u591a...";
+          loadMoreBtn.onclick = (function(summaries) { return function() {
+            state._subPageEnd = Math.min(state._subPageEnd + 10, summaries.length);
+            renderApp();
+          }; })(readSummaries);
+          container.appendChild(loadMoreBtn);
+        }
         var readInfo = document.createElement("div");
         readInfo.style.cssText = "text-align:center;padding:8px;color:var(--text-hint);font-size:11px";
         readInfo.textContent = "\u5171 " + readSummaries.length + " \u7bc7\u5df2\u9605\u8bfb";
@@ -2718,7 +2732,14 @@
     if (state.profileTab === "works") {
       if (state.publishedWorks.length > 0) {
         var grid = document.createElement("div"); grid.className = "hp-profile-grid";
-        for (var i = 0; i < state.publishedWorks.length; i++) { var w = state.publishedWorks[i]; var item = document.createElement("div"); item.className = "hp-profile-grid-item"; item.style.background = randomGradient(); item.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(w.title) + '</div>'; item.onclick = (function(wid) { return function() { window.__hofter.openReader(wid, true); }; })(w.id); grid.appendChild(item); }
+        var showCount = Math.min(5, state.publishedWorks.length);
+        for (var i = 0; i < showCount; i++) { var w = state.publishedWorks[i]; var item = document.createElement("div"); item.className = "hp-profile-grid-item"; item.style.background = randomGradient(); item.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(w.title) + '</div>'; item.onclick = (function(wid) { return function() { window.__hofter.openReader(wid, true); }; })(w.id); grid.appendChild(item); }
+        if (state.publishedWorks.length > 5) {
+          var moreItem = document.createElement("div"); moreItem.className = "hp-profile-grid-item"; moreItem.style.cssText = "background:rgba(var(--primary-rgb,232,160,191),0.1);display:flex;align-items:center;justify-content:center;cursor:pointer";
+          moreItem.innerHTML = '<div style="text-align:center;color:var(--primary-dark);font-size:12px;font-weight:600">\u67e5\u770b\u66f4\u591a<br>(\u5171' + state.publishedWorks.length + '\u4e2a)</div>';
+          moreItem.onclick = function() { window.__hofter.showFullList("works"); };
+          grid.appendChild(moreItem);
+        }
         container.appendChild(grid);
       } else {
         var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.fileText + '<p>\u6682\u65e0\u5185\u5bb9</p>';
@@ -2728,12 +2749,19 @@
       /* 收藏列表：与收藏页同步 */
       if (state.favorites.length > 0) {
         var favGrid = document.createElement("div"); favGrid.className = "hp-profile-grid";
-        for (var fi = 0; fi < state.favorites.length; fi++) {
+        var favShowCount = Math.min(5, state.favorites.length);
+        for (var fi = 0; fi < favShowCount; fi++) {
           var fav = state.favorites[fi];
           var favItem = document.createElement("div"); favItem.className = "hp-profile-grid-item"; favItem.style.background = randomGradient();
           favItem.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(fav.title || "\u672a\u547d\u540d") + '</div>';
           favItem.onclick = (function(fid) { return function() { window.__hofter.openReader(fid); }; })(fav.id);
           favGrid.appendChild(favItem);
+        }
+        if (state.favorites.length > 5) {
+          var favMoreItem = document.createElement("div"); favMoreItem.className = "hp-profile-grid-item"; favMoreItem.style.cssText = "background:rgba(var(--primary-rgb,232,160,191),0.1);display:flex;align-items:center;justify-content:center;cursor:pointer";
+          favMoreItem.innerHTML = '<div style="text-align:center;color:var(--primary-dark);font-size:12px;font-weight:600">\u67e5\u770b\u66f4\u591a<br>(\u5171' + state.favorites.length + '\u4e2a)</div>';
+          favMoreItem.onclick = function() { window.__hofter.showFullList("favs"); };
+          favGrid.appendChild(favMoreItem);
         }
         container.appendChild(favGrid);
       } else {
@@ -2758,13 +2786,20 @@
     container.appendChild(createBtn);
     /* 合集列表 */
     if (state.collections.length > 0) {
-      for (var ci = 0; ci < state.collections.length; ci++) {
+      var colShowCount = Math.min(5, state.collections.length);
+      for (var ci = 0; ci < colShowCount; ci++) {
         var col = state.collections[ci];
         var colItem = document.createElement("div"); colItem.className = "hp-menu-item"; colItem.style.flexDirection = "column"; colItem.style.alignItems = "flex-start";
         var workCount = (col.workIds || []).length;
         colItem.innerHTML = '<div style="display:flex;align-items:center;gap:8px;width:100%"><div style="width:36px;height:36px;border-radius:8px;background:' + (col.gradient || randomGradient()) + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#fff;font-size:14px;font-weight:700">' + escapeHtml((col.name||"?")[0]) + '</span></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">' + escapeHtml(col.name) + '</div><div style="font-size:12px;color:var(--text-hint)">' + workCount + ' \u7bc7\u4f5c\u54c1</div></div><div class="hp-icon-btn" style="width:28px;height:28px" onclick="event.stopPropagation();window.__hofter.deleteCollection(\'' + col.id + '\')">' + ICONS.trash.replace(/24/g,"14") + '</div></div>';
         colItem.onclick = (function(colId) { return function() { window.__hofter.openCollection(colId); }; })(col.id);
         container.appendChild(colItem);
+      }
+      if (state.collections.length > 5) {
+        var colMoreItem = document.createElement("div"); colMoreItem.className = "hp-menu-item";
+        colMoreItem.innerHTML = '<span style="font-size:13px;color:var(--primary-dark);font-weight:600">\u67e5\u770b\u66f4\u591a (\u5171' + state.collections.length + '\u4e2a\u5408\u96c6)</span>';
+        colMoreItem.onclick = function() { window.__hofter.showFullList("cols"); };
+        container.appendChild(colMoreItem);
       }
     } else {
       var emptyDiv = document.createElement("div"); emptyDiv.className = "hp-empty"; emptyDiv.innerHTML = ICONS.folder + '<p>\u8fd8\u6ca1\u6709\u5408\u96c6\uff0c\u521b\u5efa\u4e00\u4e2a\u6765\u7ba1\u7406\u4f60\u7684\u4f5c\u54c1</p>';
@@ -2811,18 +2846,21 @@
     var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "add-to-col";
     overlay.onclick = function(e) { if (e.target === overlay) closeSheet("add-to-col"); };
     var sheet = document.createElement("div"); sheet.className = "hp-sheet";
-    var html = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 20px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">\u6dfb\u52a0\u4f5c\u54c1\u5230\u5408\u96c6</div>';
+    var html = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 0"><div style="font-size:16px;font-weight:700;margin-bottom:12px">\u6dfb\u52a0\u4f5c\u54c1\u5230\u5408\u96c6</div>';
     /* 列出所有作品 */
     var allWorks = state.summaries.concat(state.publishedWorks);
     var col = null;
     for (var ci = 0; ci < state.collections.length; ci++) { if (state.collections[ci].id === colId) { col = state.collections[ci]; break; } }
     var existingIds = col ? (col.workIds || []) : [];
+    html += '<div style="max-height:50vh;overflow-y:auto">';
     for (var wi = 0; wi < allWorks.length; wi++) {
       var w = allWorks[wi];
       if (existingIds.indexOf(w.id) >= 0) continue;
-      html += '<div class="hp-menu-item" onclick="window.__hofter.closeSheet(\'add-to-col\');window.__hofter.doAddToCollection(\'' + colId + '\',\'' + w.id + '\')"><span style="font-size:13px">' + escapeHtml(w.title || "\u672a\u547d\u540d") + '</span></div>';
+      html += '<div class="hp-menu-item" data-work-id="' + w.id + '" onclick="window.__hofter.toggleColCheckItem(this)"><div class="hp-col-check" style="width:20px;height:20px;border-radius:4px;border:2px solid var(--border-color);display:flex;align-items:center;justify-content:center;flex-shrink:0"></div><span style="font-size:13px">' + escapeHtml(w.title || "\u672a\u547d\u540d") + '</span></div>';
     }
     if (allWorks.length === 0) html += '<div style="padding:16px;color:var(--text-hint);text-align:center">\u6682\u65e0\u53ef\u6dfb\u52a0\u7684\u4f5c\u54c1</div>';
+    html += '</div>';
+    html += '<div style="padding:12px 0 0"><button class="hp-btn hp-btn-primary" style="width:100%" onclick="window.__hofter.batchAddToCollection(\'' + colId + '\')">\u786e\u8ba4\u6dfb\u52a0</button></div>';
     html += '</div>';
     sheet.innerHTML = html; overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
   }
@@ -5108,6 +5146,11 @@
       if (state.roche && state.roche.storage) { state.roche.storage.delete("summaries_cache"); state.roche.storage.delete("published_works"); }
       showToast("\u7f13\u5b58\u5df2\u6e05\u9664"); renderApp();
     },
+    toggleColCheckItem: function(el) {
+      el.classList.toggle('selected');
+      var cb = el.querySelector('.hp-col-check');
+      if (cb) cb.innerHTML = el.classList.contains('selected') ? ICONS.check.replace(/24/g, '14').replace('currentColor', '#fff') : '';
+    },
     createCollection: function() {
       var nameInput = document.getElementById("hp-col-name");
       var name = nameInput ? nameInput.value.trim() : "";
@@ -5125,9 +5168,132 @@
       for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { if (!state.collections[i].workIds) state.collections[i].workIds = []; if (state.collections[i].workIds.indexOf(workId) < 0) state.collections[i].workIds.push(workId); break; } }
       saveCollections(); showToast("\u5df2\u6dfb\u52a0\u5230\u5408\u96c6"); renderApp();
     },
+    batchAddToCollection: function(colId) {
+      var items = document.querySelectorAll('#add-to-col .hp-menu-item.selected');
+      var count = 0;
+      for (var i = 0; i < items.length; i++) {
+        var workId = items[i].getAttribute('data-work-id');
+        if (workId) {
+          for (var j = 0; j < state.collections.length; j++) {
+            if (state.collections[j].id === colId) {
+              if (!state.collections[j].workIds) state.collections[j].workIds = [];
+              if (state.collections[j].workIds.indexOf(workId) < 0) { state.collections[j].workIds.push(workId); count++; }
+              break;
+            }
+          }
+        }
+      }
+      closeSheet("add-to-col");
+      if (count > 0) { saveCollections(); showToast("\u5df2\u6dfb\u52a0" + count + "\u4e2a\u4f5c\u54c1\u5230\u5408\u96c6"); renderApp(); }
+      else { showToast("\u8bf7\u5148\u9009\u62e9\u4f5c\u54c1"); }
+    },
     removeFromCollection: function(colId, workId) {
       for (var i = 0; i < state.collections.length; i++) { if (state.collections[i].id === colId) { var ids = state.collections[i].workIds || []; var idx = ids.indexOf(workId); if (idx >= 0) ids.splice(idx, 1); break; } }
       saveCollections(); closeSheet("col-view"); showToast("\u5df2\u4ece\u5408\u96c6\u79fb\u9664"); renderApp();
+    },
+    addToCollectionFromReader: function() {
+      var summary = state.currentReadingSummary;
+      if (!summary) { showToast("\u65e0\u6cd5\u64cd\u4f5c"); return; }
+      var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "reader-add-col";
+      overlay.onclick = function(e) { if (e.target === overlay) closeSheet("reader-add-col"); };
+      var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+      var html = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 20px"><div style="font-size:16px;font-weight:700;margin-bottom:12px">\u6dfb\u52a0\u5230\u5408\u96c6</div>';
+      html += '<div style="max-height:50vh;overflow-y:auto">';
+      for (var i = 0; i < state.collections.length; i++) {
+        var col = state.collections[i];
+        var existingIds = col.workIds || [];
+        if (existingIds.indexOf(summary.id) >= 0) continue;
+        html += '<div class="hp-menu-item" onclick="window.__hofter.closeSheet(\'reader-add-col\');window.__hofter.doAddToCollection(\'' + col.id + '\',\'' + summary.id + '\')"><div style="width:32px;height:32px;border-radius:8px;background:' + (col.gradient || "var(--primary-light)") + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#fff;font-size:14px;font-weight:700">' + escapeHtml((col.name || "?")[0]) + '</span></div><span style="font-size:14px">' + escapeHtml(col.name) + '</span></div>';
+      }
+      if (state.collections.length === 0) {
+        html += '<div style="padding:16px;color:var(--text-hint);text-align:center">\u6682\u65e0\u5408\u96c6</div>';
+      }
+      html += '</div>';
+      html += '<div class="hp-menu-item" onclick="window.__hofter.closeSheet(\'reader-add-col\');window.__hofter.createAndAddToCollection(\'' + summary.id + '\')">' + ICONS.plus.replace(/24/g, "16") + '<span>\u65b0\u5efa\u5408\u96c6</span></div>';
+      html += '</div>';
+      sheet.innerHTML = html; overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+    },
+    createAndAddToCollection: function(workId) {
+      var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "create-col-quick";
+      overlay.onclick = function(e) { if (e.target === overlay) closeSheet("create-col-quick"); };
+      var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+      sheet.innerHTML = '<div class="hp-sheet-handle"></div><div style="padding:0 20px 20px"><div style="font-size:16px;font-weight:700;margin-bottom:16px">\u65b0\u5efa\u5408\u96c6</div><input class="hp-input" id="hp-col-name-quick" placeholder="\u5408\u96c6\u540d\u79f0" style="width:100%;margin-bottom:12px"><button class="hp-btn hp-btn-primary" style="width:100%" onclick="window.__hofter.doCreateAndAddToCollection(\'' + workId + '\')">\u521b\u5efa\u5e76\u6dfb\u52a0</button></div>';
+      overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+    },
+    doCreateAndAddToCollection: function(workId) {
+      var nameInput = document.getElementById("hp-col-name-quick");
+      var name = nameInput ? nameInput.value.trim() : "";
+      if (!name) { showToast("\u8bf7\u8f93\u5165\u5408\u96c6\u540d\u79f0"); return; }
+      var newCol = {id: generateId(), name: name, workIds: [workId], gradient: randomGradient()};
+      state.collections.push(newCol);
+      closeSheet("create-col-quick");
+      saveCollections(); showToast("\u5df2\u521b\u5efa\u5408\u96c6\u5e76\u6dfb\u52a0"); renderApp();
+    },
+    showFullList: function(type) {
+      if (!state._fullListPage) state._fullListPage = {};
+      if (!state._fullListPage[type]) state._fullListPage[type] = 1;
+      var page = state._fullListPage[type];
+      var pageSize = 10;
+      var items = [];
+      var title = "";
+      if (type === "works") {
+        items = state.publishedWorks;
+        title = "\u6211\u7684\u4f5c\u54c1";
+      } else if (type === "favs") {
+        items = state.favorites;
+        title = "\u6211\u7684\u6536\u85cf";
+      } else if (type === "cols") {
+        items = state.collections;
+        title = "\u6211\u7684\u5408\u96c6";
+      }
+      var totalPages = Math.ceil(items.length / pageSize) || 1;
+      if (page > totalPages) page = totalPages;
+      var startIdx = (page - 1) * pageSize;
+      var endIdx = Math.min(startIdx + pageSize, items.length);
+      var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "full-list-page"; overlay.style.alignItems = "stretch";
+      var pageEl = document.createElement("div"); pageEl.style.cssText = "background:var(--bg-primary);width:100%;height:100%;display:flex;flex-direction:column";
+      var header = document.createElement("div"); header.className = "hp-header";
+      header.innerHTML = '<div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeSheet(\'full-list-page\')">' + ICONS.back + '</div></div><div class="hp-header-title">' + escapeHtml(title) + '</div><div class="hp-header-right"></div>';
+      pageEl.appendChild(header);
+      var body = document.createElement("div"); body.style.cssText = "flex:1;overflow-y:auto;padding:16px";
+      if (type === "cols") {
+        for (var ci = startIdx; ci < endIdx; ci++) {
+          var col = items[ci];
+          var colItem = document.createElement("div"); colItem.className = "hp-menu-item"; colItem.style.flexDirection = "column"; colItem.style.alignItems = "flex-start";
+          var workCount = (col.workIds || []).length;
+          colItem.innerHTML = '<div style="display:flex;align-items:center;gap:8px;width:100%"><div style="width:36px;height:36px;border-radius:8px;background:' + (col.gradient || randomGradient()) + ';display:flex;align-items:center;justify-content:center;flex-shrink:0"><span style="color:#fff;font-size:14px;font-weight:700">' + escapeHtml((col.name||"?")[0]) + '</span></div><div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600">' + escapeHtml(col.name) + '</div><div style="font-size:12px;color:var(--text-hint)">' + workCount + ' \u7bc7\u4f5c\u54c1</div></div></div>';
+          colItem.onclick = (function(colId) { return function() { closeSheet("full-list-page"); window.__hofter.openCollection(colId); }; })(col.id);
+          body.appendChild(colItem);
+        }
+      } else {
+        var grid = document.createElement("div"); grid.className = "hp-profile-grid";
+        for (var ii = startIdx; ii < endIdx; ii++) {
+          var it = items[ii];
+          var gItem = document.createElement("div"); gItem.className = "hp-profile-grid-item"; gItem.style.background = randomGradient();
+          gItem.innerHTML = '<div style="padding:10px;color:#fff;font-size:12px;font-weight:600">' + escapeHtml(it.title || "\u672a\u547d\u540d") + '</div>';
+          if (type === "works") {
+            gItem.onclick = (function(wid) { return function() { closeSheet("full-list-page"); window.__hofter.openReader(wid, true); }; })(it.id);
+          } else {
+            gItem.onclick = (function(fid) { return function() { closeSheet("full-list-page"); window.__hofter.openReader(fid); }; })(it.id);
+          }
+          grid.appendChild(gItem);
+        }
+        body.appendChild(grid);
+      }
+      pageEl.appendChild(body);
+      /* 分页按钮 */
+      var pager = document.createElement("div"); pager.style.cssText = "display:flex;gap:10px;padding:12px 16px;border-top:1px solid var(--bg-secondary)";
+      var prevBtn = document.createElement("button"); prevBtn.className = "hp-btn hp-btn-outline"; prevBtn.style.cssText = "flex:1";
+      prevBtn.textContent = "\u4e0a\u4e00\u9875"; prevBtn.disabled = (page <= 1);
+      prevBtn.onclick = function() { state._fullListPage[type] = page - 1; closeSheet("full-list-page"); window.__hofter.showFullList(type); };
+      var pageInfo = document.createElement("div"); pageInfo.style.cssText = "display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-secondary);min-width:60px";
+      pageInfo.textContent = page + " / " + totalPages;
+      var nextBtn = document.createElement("button"); nextBtn.className = "hp-btn hp-btn-outline"; nextBtn.style.cssText = "flex:1";
+      nextBtn.textContent = "\u4e0b\u4e00\u9875"; nextBtn.disabled = (page >= totalPages);
+      nextBtn.onclick = function() { state._fullListPage[type] = page + 1; closeSheet("full-list-page"); window.__hofter.showFullList(type); };
+      pager.appendChild(prevBtn); pager.appendChild(pageInfo); pager.appendChild(nextBtn);
+      pageEl.appendChild(pager);
+      overlay.appendChild(pageEl); state.containerEl.appendChild(overlay);
     },
     showAddModelPreset: function() {
       closeSheet("settings-page");
@@ -5490,6 +5656,7 @@
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.showModelContext()">' + ICONS.textSize + '<span>\u67e5\u770b\u6a21\u578b\u4e0a\u4e0b\u6587</span></div>' +
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.showContentSummary()">' + ICONS.fileText + '<span>\u67e5\u770b\u603b\u7ed3</span></div>' +
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.shareWork()">' + ICONS.share + '<span>\u5206\u4eab</span></div>' +
+        '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.addToCollectionFromReader()">' + ICONS.folder + '<span>\u6dfb\u52a0\u5230\u5408\u96c6</span></div>' +
         '<div class="hp-menu-item" style="color:#e74c3c" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.confirmDeleteWork()">' + ICONS.trash + '<span>\u5220\u9664</span></div>';
       overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
     },
@@ -6582,7 +6749,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.10.0",
+    version: "2.11.0",
     apps: [
       {
         id: "hofter-home",
