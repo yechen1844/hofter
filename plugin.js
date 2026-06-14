@@ -5489,8 +5489,62 @@
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.continueReading()">' + ICONS.refresh + '<span>\u8ffd\u66f4\u7eed\u7ae0</span></div>' +
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.showModelContext()">' + ICONS.textSize + '<span>\u67e5\u770b\u6a21\u578b\u4e0a\u4e0b\u6587</span></div>' +
         '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.showContentSummary()">' + ICONS.fileText + '<span>\u67e5\u770b\u603b\u7ed3</span></div>' +
-        '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.shareWork()">' + ICONS.share + '<span>\u5206\u4eab</span></div>';
+        '<div class="hp-menu-item" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.shareWork()">' + ICONS.share + '<span>\u5206\u4eab</span></div>' +
+        '<div class="hp-menu-item" style="color:#e74c3c" onclick="document.getElementById(\'hp-reader-more\').remove();window.__hofter.confirmDeleteWork()">' + ICONS.trash + '<span>\u5220\u9664</span></div>';
       overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+    },
+    confirmDeleteWork: function() {
+      var summary = state.currentReadingSummary;
+      if (!summary) { showToast("\u65e0\u6cd5\u5220\u9664"); return; }
+      var existing = document.getElementById("hp-delete-confirm");
+      if (existing) { existing.remove(); return; }
+      var overlay = document.createElement("div"); overlay.id = "hp-delete-confirm";
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center";
+      var dialog = document.createElement("div");
+      dialog.style.cssText = "background:var(--card-bg);border-radius:16px;padding:24px;width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)";
+      dialog.innerHTML = '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text-primary)">\u786e\u8ba4\u5220\u9664</div>' +
+        '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">\u5220\u9664\u540e\u5c06\u540c\u65f6\u79fb\u9664\u6b63\u6587\u548c\u6458\u8981\u5361\u7247\uff0c\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\u3002</div>' +
+        '<div style="display:flex;gap:10px"><button id="hp-delete-cancel" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color);background:transparent;color:var(--text-primary);font-size:14px;font-weight:600;cursor:pointer">\u53d6\u6d88</button>' +
+        '<button id="hp-delete-confirm-btn" style="flex:1;padding:10px;border-radius:10px;border:none;background:#e74c3c;color:#fff;font-size:14px;font-weight:600;cursor:pointer">\u786e\u8ba4\u5220\u9664</button></div>';
+      overlay.appendChild(dialog);
+      state.containerEl.appendChild(overlay);
+      document.getElementById("hp-delete-cancel").addEventListener("click", function() { overlay.remove(); });
+      document.getElementById("hp-delete-confirm-btn").addEventListener("click", function() {
+        overlay.remove();
+        window.__hofter.deleteWork();
+      });
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    },
+    deleteWork: function() {
+      var summary = state.currentReadingSummary;
+      if (!summary) { showToast("\u65e0\u6cd5\u5220\u9664"); return; }
+      var id = summary.id;
+      var isByUser = summary.isByUser;
+      /* 从对应列表中删除 */
+      if (isByUser) {
+        var newWorks = [];
+        for (var i = 0; i < state.publishedWorks.length; i++) { if (state.publishedWorks[i].id !== id) newWorks.push(state.publishedWorks[i]); }
+        state.publishedWorks = newWorks;
+        savePublishedWorks(state.publishedWorks);
+      } else {
+        var newSummaries = [];
+        for (var j = 0; j < state.summaries.length; j++) { if (state.summaries[j].id !== id) newSummaries.push(state.summaries[j]); }
+        state.summaries = newSummaries;
+        saveSummariesCache(state.summaries);
+      }
+      /* 从收藏/稍后读/历史中也删除 */
+      var newFavs = [], newLater = [], newHistory = [];
+      for (var fi = 0; fi < state.favorites.length; fi++) { if (state.favorites[fi].id !== id) newFavs.push(state.favorites[fi]); }
+      for (var li = 0; li < state.readLater.length; li++) { if (state.readLater[li].id !== id) newLater.push(state.readLater[li]); }
+      for (var hi = 0; hi < state.readHistory.length; hi++) { if (state.readHistory[hi].id !== id) newHistory.push(state.readHistory[hi]); }
+      state.favorites = newFavs; state.readLater = newLater; state.readHistory = newHistory;
+      saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
+      /* 关闭阅读器 */
+      state.currentReadingSummary = null;
+      var readerEl = document.getElementById("hp-reader");
+      if (readerEl) readerEl.remove();
+      renderApp();
+      showToast("\u5df2\u5220\u9664");
     },
     showContentSummary: function() {
       var summary = state.currentReadingSummary;
@@ -6528,7 +6582,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.9.2",
+    version: "2.10.0",
     apps: [
       {
         id: "hofter-home",
