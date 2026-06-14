@@ -1313,7 +1313,8 @@
               _lastContentLen = fullContent.length;
               resetStallTimer();
             }
-            pump();
+            /* 用setTimeout打断递归链，防止密集流数据导致栈溢出 */
+            setTimeout(pump, 0);
           }).catch(function(e) {
             debugLog("stream read err:" + e.message + ", content len:" + fullContent.length);
             finish(fullContent);
@@ -1471,7 +1472,8 @@
                 var delta = extractDeltaText(dataStr);
                 if (delta) { fullContent += delta; if (onProgress) onProgress(fullContent); }
               }
-              pump();
+              /* 用setTimeout打断递归链，防止密集流数据导致栈溢出 */
+              setTimeout(pump, 0);
             }).catch(function(e) {
               debugLog("customAiChat: stream read error: " + (e && e.message ? e.message : String(e)));
               /* 流读取失败，如果有部分内容则返回 */
@@ -3937,6 +3939,9 @@
 
   /* ─── 沉浸式阅读页 ─── */
   function openReader(summaryId, isUserWork) {
+    /* 防止重复打开：如果已有阅读器打开，先关闭 */
+    var existingReader = document.getElementById("hp-reader");
+    if (existingReader) { existingReader.remove(); }
     var summary = null;
     /* 先在publishedWorks中查找 */
     for (var i = 0; i < state.publishedWorks.length; i++) { if (state.publishedWorks[i].id === summaryId) { summary = state.publishedWorks[i]; isUserWork = true; break; } }
@@ -3951,10 +3956,13 @@
     }
     if (!summary) { showToast("\u672a\u627e\u5230\u4f5c\u54c1"); return; }
     state.currentReadingSummary = summary;
+    /* 已有正文时不显示spinner，直接渲染内容 */
+    var hasContent = !!summary.fullContent;
+    var spinnerHtml = hasContent ? '' : '<div id="hp-reader-spinner" style="text-align:center;padding:40px 20px;color:var(--text-hint)"><div class="hp-spinner" style="margin:0 auto"></div><p style="margin-top:12px">\u7075\u611f\u521b\u4f5c\u4e2d...</p></div><div id="hp-reader-stream" style="padding:16px;display:none"></div>';
     var readerEl = document.createElement("div"); readerEl.className = "hp-reader-page"; readerEl.id = "hp-reader";
-    readerEl.innerHTML = '<div class="hp-reader-header"><div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeReader()">' + ICONS.back + '</div></div><div style="flex:1;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">' + escapeHtml(summary.title) + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.showReaderSettings()">' + ICONS.textSize + '</div></div></div><div id="hp-reader-content" style="padding-bottom:60px"><div id="hp-reader-spinner" style="text-align:center;padding:40px 20px;color:var(--text-hint)"><div class="hp-spinner" style="margin:0 auto"></div><p style="margin-top:12px">\u7075\u611f\u521b\u4f5c\u4e2d...</p></div><div id="hp-reader-stream" style="padding:16px;display:none"></div></div>';
+    readerEl.innerHTML = '<div class="hp-reader-header"><div class="hp-header-left"><div class="hp-icon-btn" onclick="window.__hofter.closeReader()">' + ICONS.back + '</div></div><div style="flex:1;text-align:center;font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0">' + escapeHtml(summary.title) + '</div><div class="hp-header-right"><div class="hp-icon-btn" onclick="window.__hofter.showReaderSettings()">' + ICONS.textSize + '</div></div></div><div id="hp-reader-content" style="padding-bottom:60px">' + spinnerHtml + '</div>';
     state.containerEl.appendChild(readerEl);
-    if (summary.fullContent) {
+    if (hasContent) {
       renderReaderContent(summary);
     } else {
       generateLayer2Full(summary, function(result) {
@@ -4763,11 +4771,15 @@
             if (callback) callback();
           } catch(e) {
             debugLog("generateCharComment parse error:" + e.message);
+            /* 解析失败时标记sharedInfo已处理，防止反复重试 */
+            if (sharedInfo) sharedInfo.processed = true;
             if (callback) callback();
           }
         },
         function(e) {
           debugLog("generateCharComment error:" + (e && e.message ? e.message : String(e)));
+          /* 流错误时标记sharedInfo已处理，防止反复重试 */
+          if (sharedInfo) sharedInfo.processed = true;
           if (callback) callback();
         }
       );
@@ -4924,11 +4936,15 @@
               if (callback) callback();
             } catch(e) {
               debugLog("generateGroupCharComments parse error:" + e.message);
+              /* 解析失败时标记sharedInfo已处理，防止反复重试 */
+              if (sharedInfo) sharedInfo.processed = true;
               if (callback) callback();
             }
           },
           function(e) {
             debugLog("generateGroupCharComments error:" + (e && e.message ? e.message : String(e)));
+            /* 流错误时标记sharedInfo已处理，防止反复重试 */
+            if (sharedInfo) sharedInfo.processed = true;
             if (callback) callback();
           }
         );
@@ -6009,7 +6025,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.19.0",
+          version: "2.19.1",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -6024,7 +6040,7 @@
         };
       } else {
         data = {
-          version: "2.19.0",
+          version: "2.19.1",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
