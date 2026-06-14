@@ -3008,6 +3008,7 @@
       batchBar.innerHTML = '<span id="hp-batch-count" style="font-size:13px;color:var(--text-secondary)">\u5df2\u9009 ' + state.batchSelectedIds.length + ' \u7bc7</span>' +
         '<div style="display:flex;gap:8px">' +
           '<button id="hp-batch-gen-btn" class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
+          '<button id="hp-batch-del-btn" class="hp-btn" style="font-size:13px;padding:8px 16px;background:#e74c3c" onclick="window.__hofter.confirmBatchDelete()"' + (state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u5220\u9664</button>' +
           '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()">\u53d6\u6d88</button>' +
         '</div>';
       container.appendChild(batchBar);
@@ -7491,6 +7492,59 @@
       if (countEl) countEl.textContent = "\u5df2\u9009 " + state.batchSelectedIds.length + " \u7bc7";
       var genBtn = document.getElementById("hp-batch-gen-btn");
       if (genBtn) genBtn.disabled = state.batchSelectedIds.length === 0;
+      var delBtn = document.getElementById("hp-batch-del-btn");
+      if (delBtn) delBtn.disabled = state.batchSelectedIds.length === 0;
+    },
+    confirmBatchDelete: function() {
+      if (state.batchSelectedIds.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u6458\u8981"); return; }
+      var existing = document.getElementById("hp-batch-delete-confirm");
+      if (existing) { existing.remove(); return; }
+      var overlay = document.createElement("div"); overlay.id = "hp-batch-delete-confirm";
+      overlay.style.cssText = "position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.6);z-index:99999;display:flex;align-items:center;justify-content:center";
+      var dialog = document.createElement("div");
+      dialog.style.cssText = "background:var(--card-bg);border-radius:16px;padding:24px;width:280px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,0.3)";
+      dialog.innerHTML = '<div style="font-size:18px;font-weight:700;margin-bottom:8px;color:var(--text-primary)">\u786e\u8ba4\u5220\u9664</div>' +
+        '<div style="font-size:14px;color:var(--text-secondary);margin-bottom:20px;line-height:1.6">\u5c06\u5220\u9664\u9009\u4e2d\u7684 ' + state.batchSelectedIds.length + ' \u7bc7\u6458\u8981\u53ca\u5176\u6240\u6709\u6570\u636e\uff08\u5305\u62ec\u5df2\u751f\u6210\u7684\u6b63\u6587\u3001\u8bc4\u8bba\u7b49\uff09\uff0c\u6b64\u64cd\u4f5c\u4e0d\u53ef\u64a4\u9500\u3002</div>' +
+        '<div style="display:flex;gap:10px"><button style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color);background:transparent;color:var(--text-primary);font-size:14px;font-weight:600;cursor:pointer" onclick="document.getElementById(\'hp-batch-delete-confirm\').remove()">\u53d6\u6d88</button>' +
+        '<button style="flex:1;padding:10px;border-radius:10px;border:none;background:#e74c3c;color:#fff;font-size:14px;font-weight:600;cursor:pointer" onclick="document.getElementById(\'hp-batch-delete-confirm\').remove();window.__hofter.doBatchDelete()">\u786e\u8ba4\u5220\u9664</button></div>';
+      overlay.appendChild(dialog);
+      state.containerEl.appendChild(overlay);
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+    },
+    doBatchDelete: function() {
+      var ids = state.batchSelectedIds.slice();
+      var deletedCount = 0;
+      for (var di = 0; di < ids.length; di++) {
+        var delId = ids[di];
+        /* 从summaries中删除 */
+        var newSummaries = [];
+        for (var si = 0; si < state.summaries.length; si++) { if (state.summaries[si].id !== delId) newSummaries.push(state.summaries[si]); else deletedCount++; }
+        state.summaries = newSummaries;
+        /* 从publishedWorks中删除 */
+        var newWorks = [];
+        for (var wi = 0; wi < state.publishedWorks.length; wi++) { if (state.publishedWorks[wi].id !== delId) newWorks.push(state.publishedWorks[wi]); }
+        state.publishedWorks = newWorks;
+        /* 从收藏/稍后读/历史中删除 */
+        var newFavs = [], newLater = [], newHistory = [];
+        for (var fi = 0; fi < state.favorites.length; fi++) { if (state.favorites[fi].id !== delId) newFavs.push(state.favorites[fi]); }
+        for (var li = 0; li < state.readLater.length; li++) { if (state.readLater[li].id !== delId) newLater.push(state.readLater[li]); }
+        for (var hi = 0; hi < state.readHistory.length; hi++) { if (state.readHistory[hi].id !== delId) newHistory.push(state.readHistory[hi]); }
+        state.favorites = newFavs; state.readLater = newLater; state.readHistory = newHistory;
+        /* 如果当前正在阅读的被删除，关闭阅读器 */
+        if (state.currentReadingSummary && state.currentReadingSummary.id === delId) {
+          state.currentReadingSummary = null;
+          var readerEl = document.getElementById("hp-reader");
+          if (readerEl) readerEl.remove();
+        }
+      }
+      saveSummariesCache(state.summaries);
+      savePublishedWorks(state.publishedWorks);
+      saveFavoritesData({favorites:state.favorites, readHistory:state.readHistory, readLater:state.readLater});
+      /* 退出复选模式 */
+      state.batchSelectMode = false;
+      state.batchSelectedIds = [];
+      renderApp();
+      showToast("\u5df2\u5220\u9664 " + deletedCount + " \u7bc7");
     },
     startBatchGenerate: function() {
       if (state.batchSelectedIds.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u6458\u8981"); return; }
