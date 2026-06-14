@@ -914,6 +914,7 @@
     batchSelectedIds: [],
     batchGenerating: false,
     batchProgress: { current: 0, total: 0 },
+    _batchStopRequested: false,
     conversations: [],
     personas: [],
     characters: [],
@@ -2583,7 +2584,7 @@
       batchBar.innerHTML = progressText +
         '<div style="display:flex;gap:8px">' +
           '<button id="hp-batch-gen-btn" class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchGenerating || state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
-          '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()"' + (state.batchGenerating ? ' disabled' : '') + '>\u53d6\u6d88</button>' +
+          '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()">' + (state.batchGenerating ? '\u505c\u6b62\u751f\u6210' : '\u53d6\u6d88') + '</button>' +
         '</div>';
       container.appendChild(batchBar);
     }
@@ -5303,7 +5304,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.13.5",
+          version: "2.13.6",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5318,7 +5319,7 @@
         };
       } else {
         data = {
-          version: "2.13.5",
+          version: "2.13.6",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -6654,6 +6655,8 @@
       state.batchSelectedIds = [];
       state.batchGenerating = false;
       state.batchProgress = { current: 0, total: 0 };
+      state._batchStopRequested = true;
+      saveSummariesCache(state.summaries);
       renderApp();
     },
     toggleBatchSelect: function(summaryId) {
@@ -6681,6 +6684,7 @@
     startBatchGenerate: function() {
       if (state.batchSelectedIds.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u6458\u8981"); return; }
       state.batchGenerating = true;
+      state._batchStopRequested = false;
       state.batchProgress = { current: 0, total: state.batchSelectedIds.length };
       renderApp();
 
@@ -6688,6 +6692,16 @@
       var idx = 0;
 
       function generateNext() {
+        if (state._batchStopRequested) {
+          state.batchGenerating = false;
+          state.batchSelectMode = false;
+          state.batchSelectedIds = [];
+          state._batchStopRequested = false;
+          saveSummariesCache(state.summaries);
+          renderApp();
+          showToast("\u5df2\u505c\u6b62\u751f\u6210");
+          return;
+        }
         if (idx >= ids.length) {
           state.batchGenerating = false;
           state.batchSelectMode = false;
@@ -7022,7 +7036,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.13.5",
+    version: "2.13.6",
     apps: [
       {
         id: "hofter-home",
