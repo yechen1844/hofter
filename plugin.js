@@ -1029,6 +1029,28 @@
     el.style.display = "flex";
   }
   function hideLoading() { state.isLoading = false; var el = document.getElementById("hp-loading"); if (el) el.style.display = "none"; }
+
+  /* 批量生成顶部进度提示条 */
+  function showBatchGenTip() {
+    var el = document.getElementById("hp-batch-gen-tip");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "hp-batch-gen-tip";
+      el.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:400;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;background:linear-gradient(135deg,rgba(232,160,191,0.15),rgba(232,160,191,0.08));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid rgba(232,160,191,0.2);font-size:13px;color:var(--primary-dark);transition:transform .3s";
+      el.innerHTML = '<div class="hp-spinner" style="width:14px;height:14px;border-width:2px;border-color:var(--primary) transparent transparent transparent"></div><span id="hp-batch-gen-text"></span><span style="cursor:pointer;margin-left:8px;color:#999;font-size:12px" onclick="window.__hofter.stopBatchGenerate()">\u505c\u6b62</span>';
+      document.body.appendChild(el);
+    }
+    el.style.display = "flex";
+    updateBatchGenTip();
+  }
+  function updateBatchGenTip() {
+    var textEl = document.getElementById("hp-batch-gen-text");
+    if (textEl) textEl.textContent = "\u6b63\u5728\u751f\u6210\u6b63\u6587 " + state.batchProgress.current + "/" + state.batchProgress.total;
+  }
+  function hideBatchGenTip() {
+    var el = document.getElementById("hp-batch-gen-tip");
+    if (el) el.style.display = "none";
+  }
   /* 顶部小提示条：后台生成时显示，不遮挡内容 */
   function showRefreshBanner(text) {
     var el = document.getElementById("hp-refresh-banner");
@@ -2575,16 +2597,10 @@
     if (state.batchSelectMode) {
       var batchBar = document.createElement("div");
       batchBar.className = "hp-batch-bar";
-      var progressText = "";
-      if (state.batchGenerating) {
-        progressText = '<span id="hp-batch-progress" style="font-size:13px;color:var(--primary-dark)">\u6b63\u5728\u751f\u6210 ' + state.batchProgress.current + '/' + state.batchProgress.total + '</span>';
-      } else {
-        progressText = '<span id="hp-batch-count" style="font-size:13px;color:var(--text-secondary)">\u5df2\u9009 ' + state.batchSelectedIds.length + ' \u7bc7</span>';
-      }
-      batchBar.innerHTML = progressText +
+      batchBar.innerHTML = '<span id="hp-batch-count" style="font-size:13px;color:var(--text-secondary)">\u5df2\u9009 ' + state.batchSelectedIds.length + ' \u7bc7</span>' +
         '<div style="display:flex;gap:8px">' +
-          '<button id="hp-batch-gen-btn" class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchGenerating || state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
-          '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()">' + (state.batchGenerating ? '\u505c\u6b62\u751f\u6210' : '\u53d6\u6d88') + '</button>' +
+          '<button id="hp-batch-gen-btn" class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
+          '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()">\u53d6\u6d88</button>' +
         '</div>';
       container.appendChild(batchBar);
     }
@@ -5304,7 +5320,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.13.6",
+          version: "2.14.0",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -5319,7 +5335,7 @@
         };
       } else {
         data = {
-          version: "2.13.6",
+          version: "2.14.0",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -6653,11 +6669,11 @@
     exitBatchSelect: function() {
       state.batchSelectMode = false;
       state.batchSelectedIds = [];
-      state.batchGenerating = false;
       state.batchProgress = { current: 0, total: 0 };
-      state._batchStopRequested = true;
-      saveSummariesCache(state.summaries);
       renderApp();
+    },
+    stopBatchGenerate: function() {
+      state._batchStopRequested = true;
     },
     toggleBatchSelect: function(summaryId) {
       var idx = state.batchSelectedIds.indexOf(summaryId);
@@ -6683,31 +6699,32 @@
     },
     startBatchGenerate: function() {
       if (state.batchSelectedIds.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u6458\u8981"); return; }
+      /* 先备份选中的ID，再退出复选模式 */
+      var ids = state.batchSelectedIds.slice();
       state.batchGenerating = true;
       state._batchStopRequested = false;
-      state.batchProgress = { current: 0, total: state.batchSelectedIds.length };
+      state.batchProgress = { current: 0, total: ids.length };
+      /* 立即退出复选模式，恢复正常交互 */
+      state.batchSelectMode = false;
+      state.batchSelectedIds = [];
       renderApp();
+      showBatchGenTip();
 
-      var ids = state.batchSelectedIds.slice();
       var idx = 0;
 
       function generateNext() {
         if (state._batchStopRequested) {
           state.batchGenerating = false;
-          state.batchSelectMode = false;
-          state.batchSelectedIds = [];
           state._batchStopRequested = false;
           saveSummariesCache(state.summaries);
-          renderApp();
+          hideBatchGenTip();
           showToast("\u5df2\u505c\u6b62\u751f\u6210");
           return;
         }
         if (idx >= ids.length) {
           state.batchGenerating = false;
-          state.batchSelectMode = false;
-          state.batchSelectedIds = [];
           saveSummariesCache(state.summaries);
-          renderApp();
+          hideBatchGenTip();
           showToast("\u5168\u90e8\u751f\u6210\u5b8c\u6210\uff01");
           return;
         }
@@ -6719,13 +6736,12 @@
         if (!summary || summary.fullContent) {
           idx++;
           state.batchProgress.current = idx;
+          updateBatchGenTip();
           generateNext();
           return;
         }
         state.batchProgress.current = idx + 1;
-        showToast("\u6b63\u5728\u751f\u6210 " + (idx + 1) + "/" + ids.length);
-        var progressEl = document.getElementById("hp-batch-progress");
-        if (progressEl) progressEl.textContent = "\u6b63\u5728\u751f\u6210 " + (idx + 1) + "/" + ids.length;
+        updateBatchGenTip();
 
         generateLayer2Full(summary, function(result) {
           if (result) {
@@ -7036,7 +7052,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.13.6",
+    version: "2.14.0",
     apps: [
       {
         id: "hofter-home",
