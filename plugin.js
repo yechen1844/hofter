@@ -3244,6 +3244,7 @@
       '<div class="hp-menu-item" onclick="window.__hofter.showShareBall()">' + ICONS.share + '<span>\u663e\u793a\u5206\u4eab\u60ac\u6d6e\u7403</span></div>' +
       '<div class="hp-menu-item" onclick="window.__hofter.resetShareBallPosition()">' + ICONS.refresh + '<span>\u91cd\u7f6e\u60ac\u6d6e\u7403\u4f4d\u7f6e</span></div>' +
       '<div class="hp-settings-row"><span>\u89d2\u8272\u8bc4\u8bba\u533a\u4e92\u52a8</span><div style="display:flex;gap:6px;align-items:center"><button class="hp-btn hp-btn-sm ' + (s.charCommentInteraction!==false?"hp-btn-primary":"hp-btn-outline") + '" data-cci="on" style="font-size:12px;padding:4px 10px" onclick="window.__hofter.setCharCommentInteraction(true)">\u5f00\u542f</button><button class="hp-btn hp-btn-sm ' + (s.charCommentInteraction===false?"hp-btn-primary":"hp-btn-outline") + '" data-cci="off" style="font-size:12px;padding:4px 10px" onclick="window.__hofter.setCharCommentInteraction(false)">\u5173\u95ed</button></div></div>' +
+      '<div class="hp-menu-item" onclick="window.__hofter.confirmExport()">' + ICONS.share + '<span>\u5bfc\u51fa\u6570\u636e</span></div>' +
       '<div class="hp-menu-item" onclick="window.__hofter.confirmClearCache()">' + ICONS.trash + '<span>\u6e05\u9664\u7f13\u5b58</span></div></div>';
     page.appendChild(body); overlay.appendChild(page); state.containerEl.appendChild(overlay);
   }
@@ -5115,6 +5116,73 @@
       showToast(enabled ? "\u89d2\u8272\u8bc4\u8bba\u533a\u4e92\u52a8\u5df2\u5f00\u542f" : "\u89d2\u8272\u8bc4\u8bba\u533a\u4e92\u52a8\u5df2\u5173\u95ed");
       renderApp();
     },
+    confirmExport: function() {
+      var existing = document.getElementById("hp-export-confirm");
+      if (existing) { existing.remove(); return; }
+      var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "hp-export-confirm";
+      overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
+      var sheet = document.createElement("div"); sheet.className = "hp-sheet";
+      sheet.innerHTML = '<div class="hp-sheet-handle"></div>' +
+        '<div style="padding:16px;text-align:center">' +
+        '<div style="font-size:48px;margin-bottom:12px">' + ICONS.share.replace(/24/g,"48").replace("currentColor","var(--primary)") + '</div>' +
+        '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\u9009\u62e9\u5bfc\u51fa\u8303\u56f4</div>' +
+        '</div>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">' +
+        '<button class="hp-btn hp-btn-outline" style="width:100%" onclick="document.getElementById(\'hp-export-confirm\').remove();window.__hofter.exportData(\'current\')">\u5bfc\u51fa\u5f53\u524d\u4eba\u8bbe\u6570\u636e</button>' +
+        '<div style="font-size:12px;color:var(--text-hint);text-align:center;margin:-4px 0">\u4ec5\u5bfc\u51fa\u5f53\u524d\u4eba\u8bbe\u7684\u6458\u8981\u3001\u6b63\u6587\u3001\u8bc4\u8bba\u3001\u6536\u85cf\u3001\u5386\u53f2\u3001\u7a0d\u540e\u8bfb\u3001\u5408\u96c6\u548ctag</div>' +
+        '<button class="hp-btn" style="width:100%;background:var(--primary);color:#fff" onclick="document.getElementById(\'hp-export-confirm\').remove();window.__hofter.exportData(\'all\')">\u5bfc\u51fa\u5168\u90e8\u6570\u636e</button>' +
+        '<div style="font-size:12px;color:var(--primary);text-align:center;margin:-4px 0">\u5bfc\u51fa\u6240\u6709\u4eba\u8bbe\u7684\u6570\u636e\uff08\u5305\u542b\u8bbe\u7f6e\uff09</div>' +
+        '<button class="hp-btn hp-btn-outline" style="width:100%;margin-top:4px" onclick="document.getElementById(\'hp-export-confirm\').remove()">\u53d6\u6d88</button>' +
+        '</div>';
+      overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+    },
+    exportData: function(scope) {
+      var data;
+      if (scope === "current") {
+        data = {
+          version: "2.11.2",
+          scope: "current",
+          persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
+          summaries: state.summaries,
+          publishedWorks: state.publishedWorks,
+          favorites: state.favorites,
+          readHistory: state.readHistory,
+          readLater: state.readLater,
+          collections: state.collections,
+          cpTags: state.cpTags,
+          tropeTags: state.tropeTags,
+          fandomTags: state.fandomTags
+        };
+      } else {
+        data = {
+          version: "2.11.2",
+          scope: "all",
+          settings: state.settings,
+          personas: state.personas,
+          activePersona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
+          summaries: state.summaries,
+          publishedWorks: state.publishedWorks,
+          favorites: state.favorites,
+          readHistory: state.readHistory,
+          readLater: state.readLater,
+          collections: state.collections,
+          cpTags: state.cpTags,
+          tropeTags: state.tropeTags,
+          fandomTags: state.fandomTags
+        };
+      }
+      var json = JSON.stringify(data, null, 2);
+      var blob = new Blob([json], { type: "application/json" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "hofter_" + (scope === "current" ? "current" : "all") + "_" + new Date().toISOString().slice(0,10) + ".json";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast("\u5bfc\u51fa\u6210\u529f");
+    },
     confirmClearCache: function() {
       var existing = document.getElementById("hp-clear-confirm");
       if (existing) { existing.remove(); return; }
@@ -6339,6 +6407,7 @@
         /* 保存当前人设的数据 */
         saveCpTags(state.cpTags);
         saveTropeTags(state.tropeTags);
+        saveFandomTags(state.fandomTags);
         saveSummariesCache(state.summaries);
         savePublishedWorks(state.publishedWorks);
         saveFavoritesData({favorites: state.favorites, readHistory: state.readHistory, readLater: state.readLater});
@@ -6778,7 +6847,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.11.1",
+    version: "2.11.2",
     apps: [
       {
         id: "hofter-home",
