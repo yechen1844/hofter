@@ -1,10 +1,10 @@
 {
   "id": "hofter",
   "name": "Hofter",
-  "version": "2.18.1",
+  "version": "2.19.0",
   "description": "沉浸式同人小说社区 - Lofter风格同人文生成与阅读",
   "author": "yechen1844",
-  "entry": "https://raw.githubusercontent.com/luyi90720-sys/hofter/main/plugin.js?v=2.18.1",
+  "entry": "https://raw.githubusercontent.com/luyi90720-sys/hofter/main/plugin.js?v=2.19.0",
   "hash": "",
   "permissions": [
     "persona:read",
