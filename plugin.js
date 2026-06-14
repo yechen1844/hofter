@@ -1081,37 +1081,27 @@
   function saveFandomTags(t) { state.fandomTags = t; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("fandomTags"), t); }
   function saveSummariesCache(a) {
     state.summaries = a;
-    /* 清理超出100条限制的未生成正文且未收藏/稍后读的摘要 */
-    var withoutContent = [];
-    for (var i = 0; i < state.summaries.length; i++) {
-      if (!state.summaries[i].fullContent) withoutContent.push(state.summaries[i]);
-    }
-    if (withoutContent.length > 100) {
-      /* 构建已保护ID集合：收藏+稍后读 */
-      var protectedIds = {};
-      for (var fi = 0; fi < state.favorites.length; fi++) protectedIds[state.favorites[fi].id] = true;
-      for (var ri = 0; ri < state.readLater.length; ri++) protectedIds[state.readLater[ri].id] = true;
-      /* 从后往前检查，删除超出100条且未保护的摘要 */
-      var kept = 0;
-      var newSummaries = [];
-      for (var si = 0; si < state.summaries.length; si++) {
-        var s = state.summaries[si];
-        if (s.fullContent) {
-          /* 已生成正文的全部保留 */
+    /* 构建已保护ID集合：收藏+稍后读 */
+    var protectedIds = {};
+    for (var fi = 0; fi < state.favorites.length; fi++) protectedIds[state.favorites[fi].id] = true;
+    for (var ri = 0; ri < state.readLater.length; ri++) protectedIds[state.readLater[ri].id] = true;
+    /* 统计未保护的摘要数量（已生成正文/已收藏/已稍后读的不计入100条名额） */
+    var unprotectedCount = 0;
+    var newSummaries = [];
+    for (var si = 0; si < state.summaries.length; si++) {
+      var s = state.summaries[si];
+      if (s.fullContent || protectedIds[s.id]) {
+        /* 已生成正文或已收藏/稍后读的摘要全部保留，不计入100条 */
+        newSummaries.push(s);
+      } else {
+        unprotectedCount++;
+        if (unprotectedCount <= 100) {
           newSummaries.push(s);
-        } else if (protectedIds[s.id]) {
-          /* 已收藏/稍后读的全部保留 */
-          newSummaries.push(s);
-        } else {
-          kept++;
-          if (kept <= 100) {
-            newSummaries.push(s);
-          }
-          /* 超过100条的未保护摘要直接删除 */
         }
+        /* 超过100条的未保护摘要直接删除数据 */
       }
-      state.summaries = newSummaries;
     }
+    state.summaries = newSummaries;
     if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("summaries_cache"), state.summaries);
   }
   function savePublishedWorks(a) { state.publishedWorks = a; if (state.roche && state.roche.storage) state.roche.storage.set(personaKey("published_works"), a); }
@@ -2295,6 +2285,7 @@
   function createSummaryCard(summary) {
     var card = document.createElement("div");
     card.className = "hp-card";
+    card.setAttribute("data-summary-id", summary.id);
     var authorName = summary.author || randomAuthorName();
     var cpName = summary.cp || summary.cpTagName || "";
     var cpTagId = summary.cpTagId || "";
@@ -2571,11 +2562,11 @@
       if (state.batchGenerating) {
         progressText = '<span id="hp-batch-progress" style="font-size:13px;color:var(--primary-dark)">\u6b63\u5728\u751f\u6210 ' + state.batchProgress.current + '/' + state.batchProgress.total + '</span>';
       } else {
-        progressText = '<span style="font-size:13px;color:var(--text-secondary)">\u5df2\u9009 ' + state.batchSelectedIds.length + ' \u7bc7</span>';
+        progressText = '<span id="hp-batch-count" style="font-size:13px;color:var(--text-secondary)">\u5df2\u9009 ' + state.batchSelectedIds.length + ' \u7bc7</span>';
       }
       batchBar.innerHTML = progressText +
         '<div style="display:flex;gap:8px">' +
-          '<button class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchGenerating ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
+          '<button id="hp-batch-gen-btn" class="hp-btn" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.startBatchGenerate()"' + (state.batchGenerating || state.batchSelectedIds.length === 0 ? ' disabled' : '') + '>\u4e00\u952e\u751f\u6210\u6b63\u6587</button>' +
           '<button class="hp-btn hp-btn-outline" style="font-size:13px;padding:8px 16px" onclick="window.__hofter.exitBatchSelect()"' + (state.batchGenerating ? ' disabled' : '') + '>\u53d6\u6d88</button>' +
         '</div>';
       container.appendChild(batchBar);
@@ -5125,20 +5116,42 @@
       renderApp();
     },
     confirmClearCache: function() {
+      var existing = document.getElementById("hp-clear-confirm");
+      if (existing) { existing.remove(); return; }
       var overlay = document.createElement("div"); overlay.className = "hp-sheet-overlay"; overlay.id = "hp-clear-confirm";
       overlay.onclick = function(e) { if (e.target === overlay) overlay.remove(); };
       var sheet = document.createElement("div"); sheet.className = "hp-sheet";
       sheet.innerHTML = '<div class="hp-sheet-handle"></div>' +
         '<div style="padding:16px;text-align:center">' +
         '<div style="font-size:48px;margin-bottom:12px">' + ICONS.trash.replace(/24/g,"48").replace("currentColor","var(--like-red)") + '</div>' +
-        '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\u786e\u8ba4\u6e05\u9664\u7f13\u5b58\uff1f</div>' +
-        '<div style="font-size:14px;color:var(--text-secondary);line-height:1.6">\u6b64\u64cd\u4f5c\u5c06\u6e05\u9664\u6240\u6709\u5df2\u751f\u6210\u7684\u6458\u8981\u3001\u6b63\u6587\u3001\u8bc4\u8bba\u3001\u6536\u85cf\u3001\u5386\u53f2\u548c\u7a0d\u540e\u770b\u8bb0\u5f55\uff0c\u4e14\u65e0\u6cd5\u64a4\u9500\u3002</div>' +
+        '<div style="font-size:17px;font-weight:700;margin-bottom:8px">\u9009\u62e9\u6e05\u9664\u8303\u56f4</div>' +
         '</div>' +
-        '<div style="display:flex;gap:12px;padding:0 16px 16px">' +
-        '<button class="hp-btn hp-btn-outline" style="flex:1" onclick="document.getElementById(\'hp-clear-confirm\').remove()">\u53d6\u6d88</button>' +
-        '<button class="hp-btn" style="flex:1;background:var(--like-red);color:#fff" onclick="document.getElementById(\'hp-clear-confirm\').remove();window.__hofter.clearCache()">\u786e\u8ba4\u6e05\u9664</button>' +
+        '<div style="display:flex;flex-direction:column;gap:10px;padding:0 16px 16px">' +
+        '<button class="hp-btn hp-btn-outline" style="width:100%" onclick="document.getElementById(\'hp-clear-confirm\').remove();window.__hofter.clearRedundant()">\u6e05\u9664\u5197\u4f59\u6458\u8981</button>' +
+        '<div style="font-size:12px;color:var(--text-hint);text-align:center;margin:-4px 0">\u4ec5\u5220\u9664\u672a\u751f\u6210\u6b63\u6587\u4e14\u672a\u6536\u85cf/\u7a0d\u540e\u8bfb\u7684\u6458\u8981\u5361\u7247</div>' +
+        '<button class="hp-btn" style="width:100%;background:var(--like-red);color:#fff" onclick="document.getElementById(\'hp-clear-confirm\').remove();window.__hofter.clearCache()">\u6e05\u9664\u5168\u90e8\u7f13\u5b58</button>' +
+        '<div style="font-size:12px;color:var(--like-red);text-align:center;margin:-4px 0">\u6e05\u9664\u6240\u6709\u6458\u8981\u3001\u6b63\u6587\u3001\u8bc4\u8bba\u3001\u6536\u85cf\u3001\u5386\u53f2\u548c\u7a0d\u540e\u8bfb\u8bb0\u5f55</div>' +
+        '<button class="hp-btn hp-btn-outline" style="width:100%;margin-top:4px" onclick="document.getElementById(\'hp-clear-confirm\').remove()">\u53d6\u6d88</button>' +
         '</div>';
       overlay.appendChild(sheet); state.containerEl.appendChild(overlay);
+    },
+    clearRedundant: function() {
+      var protectedIds = {};
+      for (var fi = 0; fi < state.favorites.length; fi++) protectedIds[state.favorites[fi].id] = true;
+      for (var ri = 0; ri < state.readLater.length; ri++) protectedIds[state.readLater[ri].id] = true;
+      var newSummaries = [];
+      var removed = 0;
+      for (var si = 0; si < state.summaries.length; si++) {
+        var s = state.summaries[si];
+        if (s.fullContent || protectedIds[s.id]) {
+          newSummaries.push(s);
+        } else {
+          removed++;
+        }
+      }
+      state.summaries = newSummaries;
+      saveSummariesCache(state.summaries);
+      showToast("\u5df2\u6e05\u9664 " + removed + " \u6761\u5197\u4f59\u6458\u8981"); renderApp();
     },
     clearCache: function() {
       state.summaries = []; state.publishedWorks = []; state.favorites = []; state.readHistory = []; state.readLater = []; state.collections = [];
@@ -6403,7 +6416,23 @@
       var idx = state.batchSelectedIds.indexOf(summaryId);
       if (idx >= 0) { state.batchSelectedIds.splice(idx, 1); }
       else { state.batchSelectedIds.push(summaryId); }
-      renderApp();
+      /* 局部更新：避免renderApp导致页面跳到顶部 */
+      var card = document.querySelector('[data-summary-id="' + summaryId + '"]');
+      if (card) {
+        var isSelected = state.batchSelectedIds.indexOf(summaryId) >= 0;
+        if (isSelected) card.classList.add("selected-for-batch");
+        else card.classList.remove("selected-for-batch");
+        var checkbox = card.querySelector(".hp-card-batch-checkbox");
+        if (checkbox) {
+          checkbox.className = "hp-card-batch-checkbox" + (isSelected ? " checked" : "");
+          checkbox.innerHTML = isSelected ? '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fff" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>' : "";
+        }
+      }
+      /* 更新底部操作栏计数 */
+      var countEl = document.getElementById("hp-batch-count");
+      if (countEl) countEl.textContent = "\u5df2\u9009 " + state.batchSelectedIds.length + " \u7bc7";
+      var genBtn = document.getElementById("hp-batch-gen-btn");
+      if (genBtn) genBtn.disabled = state.batchSelectedIds.length === 0;
     },
     startBatchGenerate: function() {
       if (state.batchSelectedIds.length === 0) { showToast("\u8bf7\u5148\u9009\u62e9\u6458\u8981"); return; }
@@ -6749,7 +6778,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.11.0",
+    version: "2.11.1",
     apps: [
       {
         id: "hofter-home",
