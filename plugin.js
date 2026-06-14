@@ -1027,6 +1027,26 @@
     el.style.display = "flex";
   }
   function hideLoading() { state.isLoading = false; var el = document.getElementById("hp-loading"); if (el) el.style.display = "none"; }
+  /* 顶部小提示条：后台生成时显示，不遮挡内容 */
+  function showRefreshBanner(text) {
+    var el = document.getElementById("hp-refresh-banner");
+    if (!el) {
+      el = document.createElement("div"); el.id = "hp-refresh-banner";
+      el.style.cssText = "position:sticky;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px;background:linear-gradient(135deg,rgba(14,165,160,0.15),rgba(6,182,212,0.15));backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);color:var(--accent);font-size:13px;font-weight:500;border-bottom:1px solid rgba(14,165,160,0.2);transition:all .3s";
+      el.innerHTML = '<div class="hp-spinner" style="width:14px;height:14px;border-width:2px;margin:0"></div><span>' + (text || "\u751f\u6210\u4e2d...") + '</span>';
+      var scrollEl = state.containerEl && state.containerEl.querySelector('.hp-scroll-container');
+      if (scrollEl) scrollEl.insertBefore(el, scrollEl.firstChild);
+      else if (state.containerEl) state.containerEl.insertBefore(el, state.containerEl.firstChild);
+    } else {
+      el.style.display = "flex";
+      var span = el.querySelector("span");
+      if (span && text) span.textContent = text;
+    }
+  }
+  function hideRefreshBanner() {
+    var el = document.getElementById("hp-refresh-banner");
+    if (el) el.style.display = "none";
+  }
   /* 评论区的轻量loading：只在评论区底部显示小转圈，不遮挡正文 */
   function showCommentLoading() {
     var list = document.querySelector(".hp-comment-list");
@@ -3074,13 +3094,15 @@
       showToast("\u70ed\u95e8\u6807\u7b7e\u9875\u65e0\u9700\u5237\u65b0");
       return;
     }
-    showLoading();
+    state.isLoading = true;
+    showRefreshBanner("\u6b63\u5728\u751f\u6210\u65b0\u6458\u8981...");
     var lockTag = state.currentTagPage || null;
     var isTropeLock = lockTag && !lockTag.leftSide;
-    var timeout = setTimeout(function() { hideLoading(); showToast("\u751f\u6210\u8d85\u65f6\uff0c\u8bf7\u91cd\u8bd5"); }, 300000);
+    var timeout = setTimeout(function() { state.isLoading = false; hideRefreshBanner(); showToast("\u751f\u6210\u8d85\u65f6\uff0c\u8bf7\u91cd\u8bd5"); }, 300000);
     generateLayer1Summaries(lockTag, function(summaries) {
       clearTimeout(timeout);
-      hideLoading();
+      state.isLoading = false;
+      hideRefreshBanner();
       if (summaries && summaries.length > 0) {
         for (var i = 0; i < summaries.length; i++) {
           summaries[i].id = summaries[i].id || generateId();
@@ -6506,7 +6528,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.9.1",
+    version: "2.9.2",
     apps: [
       {
         id: "hofter-home",
