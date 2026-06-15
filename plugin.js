@@ -908,7 +908,7 @@
     tropeTags: [],
     fandomTags: [],
     worldbookCategories: [],
-    settings: { onboardCompleted: false, activePersonaId: "", cpMode: "default", mountedConversationIds: [], memoryAttachProbability: 30, theme: "light", fontSize: 17, wordCountMin: 3000, wordCountMax: 8000, autoGenerateComments: false, autoFollowTropeTags: false, modelPresets: [], activeModelPresetId: "", promptLanguage: "zh", shareMemoryMode: "auto", autoPolish: false, polishPresets: [], activePolishPresetId: "", polishMode: "direct", keepOriginalText: false, polishModelPresetId: "" },
+    settings: { onboardCompleted: false, activePersonaId: "", cpMode: "default", mountedConversationIds: [], memoryAttachProbability: 30, theme: "light", fontSize: 17, wordCountMin: 3000, wordCountMax: 8000, autoGenerateComments: false, autoFollowTropeTags: false, modelPresets: [], activeModelPresetId: "", promptLanguage: "zh", shareMemoryMode: "auto", autoPolish: false, polishPresets: [], activePolishPresetId: "", polishMode: "direct", keepOriginalText: false, polishModelPresetId: "", safeAreaMode: false, customTopPadding: 0, customBottomPadding: 0 },
     isLoading: false,
     batchSelectMode: false,
     batchSelectedIds: [],
@@ -2869,6 +2869,8 @@
     else if (state.currentPage === "discover" && (state.discoverTab === "recommend" || state.discoverTab === "explore")) needRefresh = true;
     else if (state.currentPage === "tagPage") needRefresh = true;
     if (needRefresh) initPullToRefresh(content);
+    /* 渲染完成后应用安全区域适配 */
+    if (window.__hofter && window.__hofter.applySafeArea) { try { window.__hofter.applySafeArea(); } catch(se) { debugLog("applySafeArea error: " + se.message); } }
     } catch(e) { console.error('[hofter] renderApp error:', e); debugLog('renderApp ERROR: ' + e.message); }
   }
 
@@ -3688,6 +3690,11 @@
         })()
       : '<div style="font-size:13px;color:var(--text-hint);padding:8px 0">\u5c1a\u672a\u914d\u7f6e\u8f7b\u578b\u6a21\u578b</div>') +
       '<div class="hp-menu-item" onclick="window.__hofter.showAddModelPreset()">' + ICONS.plus.replace(/24/g,"16") + '<span>\u6dfb\u52a0\u6a21\u578b\u9884\u8bbe</span></div></div>' +
+      '<div class="hp-settings-section"><div class="hp-section-title">\u5c4f\u5e55\u9002\u914d</div>' +
+      '<div style="font-size:12px;color:var(--text-hint);padding:0 0 8px">iOS\u7b49\u8bbe\u5907\u72b6\u6001\u680f\u53ef\u80fd\u4e0e\u9876\u680f\u91cd\u53e0\uff0c\u5f00\u542f\u540e\u81ea\u52a8\u4e0b\u79fb\u9876\u680f\u5e76\u589e\u52a0\u5e95\u90e8\u5b89\u5168\u95f4\u8ddd</div>' +
+      '<div class="hp-settings-row"><span>\u5b89\u5168\u533a\u57df\u9002\u914d</span><div class="hp-toggle ' + (s.safeAreaMode?"on":"") + '" onclick="window.__hofter.toggleSafeAreaMode()"></div></div>' +
+      '<div class="hp-settings-row"><span>\u9876\u680f\u989d\u5916\u95f4\u8ddd\uff1a' + (s.customTopPadding||0) + 'px</span><input type="range" class="hp-slider" min="0" max="60" value="' + (s.customTopPadding||0) + '" oninput="window.__hofter.setCustomTopPadding(this.value)"></div>' +
+      '<div class="hp-settings-row"><span>\u5e95\u680f\u989d\u5916\u95f4\u8ddd\uff1a' + (s.customBottomPadding||0) + 'px</span><input type="range" class="hp-slider" min="0" max="60" value="' + (s.customBottomPadding||0) + '" oninput="window.__hofter.setCustomBottomPadding(this.value)"></div></div>' +
       '<div class="hp-settings-section"><div class="hp-section-title">\u5176\u4ed6</div>' +
       '<div class="hp-menu-item" onclick="window.__hofter.showShareBall()">' + ICONS.share + '<span>\u663e\u793a\u5206\u4eab\u60ac\u6d6e\u7403</span></div>' +
       '<div class="hp-menu-item" onclick="window.__hofter.resetShareBallPosition()">' + ICONS.refresh + '<span>\u91cd\u7f6e\u60ac\u6d6e\u7403\u4f4d\u7f6e</span></div>' +
@@ -5910,6 +5917,92 @@
         }
       }
     },
+    applySafeArea: function() {
+      var s = getSettings();
+      var topPad = (s.customTopPadding || 0);
+      var bottomPad = (s.customBottomPadding || 0);
+      /* iOS安全区域模式：自动使用env(safe-area-inset) */
+      var safeTop = s.safeAreaMode ? "max(" + topPad + "px, env(safe-area-inset-top, " + topPad + "px))" : topPad + "px";
+      var safeBottom = s.safeAreaMode ? "max(" + bottomPad + "px, env(safe-area-inset-bottom, " + bottomPad + "px))" : bottomPad + "px";
+      /* 顶栏：增加padding-top */
+      var headers = state.containerEl.querySelectorAll(".hp-header, .hp-reader-header");
+      for (var i = 0; i < headers.length; i++) {
+        headers[i].style.paddingTop = safeTop;
+      }
+      /* 底部导航栏：增加padding-bottom */
+      var nav = document.getElementById("hp-main-nav");
+      if (nav) {
+        nav.style.paddingBottom = s.safeAreaMode ? "max(6px, env(safe-area-inset-bottom, 6px), " + bottomPad + "px)" : "max(6px, " + bottomPad + "px)";
+      }
+      /* 底部sheet：增加padding-bottom */
+      var sheets = state.containerEl.querySelectorAll(".hp-sheet");
+      for (var j = 0; j < sheets.length; j++) {
+        sheets[j].style.paddingBottom = s.safeAreaMode ? "max(20px, env(safe-area-inset-bottom, 20px), " + bottomPad + "px)" : "max(20px, " + bottomPad + "px)";
+      }
+      /* 阅读器内容区底部留白 */
+      var readerContent = document.getElementById("hp-reader-content");
+      if (readerContent) {
+        readerContent.style.paddingBottom = "calc(60px + " + safeBottom + ")";
+      }
+      /* 评论区输入框底部留白 */
+      var commentInput = state.containerEl.querySelector("#hp-comment-input");
+      if (commentInput) {
+        var commentSection = commentInput.closest("div");
+        if (commentSection) commentSection.style.paddingBottom = safeBottom;
+      }
+    },
+    toggleSafeAreaMode: function() {
+      state.settings.safeAreaMode = !state.settings.safeAreaMode;
+      saveSettings(state.settings);
+      window.__hofter.applySafeArea();
+      /* 更新设置页toggle */
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u5b89\u5168\u533a\u57df\u9002\u914d") >= 0) {
+            var toggle = rows[i].querySelector(".hp-toggle");
+            if (toggle) { if (state.settings.safeAreaMode) toggle.classList.add("on"); else toggle.classList.remove("on"); }
+            break;
+          }
+        }
+      }
+    },
+    setCustomTopPadding: function(val) {
+      state.settings.customTopPadding = parseInt(val, 10) || 0;
+      saveSettings(state.settings);
+      window.__hofter.applySafeArea();
+      /* 更新设置页显示 */
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u9876\u680f\u989d\u5916\u95f4\u8ddd") >= 0) {
+            span.textContent = "\u9876\u680f\u989d\u5916\u95f4\u8ddd\uff1a" + state.settings.customTopPadding + "px";
+            break;
+          }
+        }
+      }
+    },
+    setCustomBottomPadding: function(val) {
+      state.settings.customBottomPadding = parseInt(val, 10) || 0;
+      saveSettings(state.settings);
+      window.__hofter.applySafeArea();
+      /* 更新设置页显示 */
+      var settingsPage = document.getElementById("settings-page");
+      if (settingsPage) {
+        var rows = settingsPage.querySelectorAll(".hp-settings-row");
+        for (var i = 0; i < rows.length; i++) {
+          var span = rows[i].querySelector("span");
+          if (span && span.textContent.indexOf("\u5e95\u680f\u989d\u5916\u95f4\u8ddd") >= 0) {
+            span.textContent = "\u5e95\u680f\u989d\u5916\u95f4\u8ddd\uff1a" + state.settings.customBottomPadding + "px";
+            break;
+          }
+        }
+      }
+    },
     toggleTheme: function() {
       state.settings.theme = state.settings.theme === "dark" ? "light" : "dark";
       saveSettings(state.settings);
@@ -6026,7 +6119,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.19.1",
+          version: "2.20.0",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -6041,7 +6134,7 @@
         };
       } else {
         data = {
-          version: "2.19.1",
+          version: "2.20.0",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -7894,7 +7987,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.19.1",
+    version: "2.20.0",
     apps: [
       {
         id: "hofter-home",
@@ -7978,6 +8071,8 @@
               Promise.all(dataPromises).then(function() {
                 console.log('[hofter] loadData done, calling renderApp, __hofter:', !!window.__hofter, 'containerEl:', !!state.containerEl);
                 renderApp();
+                /* 应用安全区域适配 */
+                window.__hofter.applySafeArea();
                 /* 启动聊天消息观察器 */
                 startChatMessageObserver();
               }).catch(function() { console.log('[hofter] dataLoad FAILED, calling renderApp anyway'); renderApp(); });
