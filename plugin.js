@@ -6099,7 +6099,7 @@
       var data;
       if (scope === "current") {
         data = {
-          version: "2.20.0",
+          version: "2.20.1",
           scope: "current",
           persona: state.activePersona ? { id: state.activePersona.id, name: state.activePersona.name || state.activePersona.handle } : null,
           summaries: state.summaries,
@@ -6114,7 +6114,7 @@
         };
       } else {
         data = {
-          version: "2.20.0",
+          version: "2.20.1",
           scope: "all",
           settings: state.settings,
           personas: state.personas,
@@ -7967,7 +7967,7 @@
   window.RochePlugin.register({
     id: "hofter",
     name: "hofter",
-    version: "2.20.0",
+    version: "2.20.1",
     apps: [
       {
         id: "hofter-home",
